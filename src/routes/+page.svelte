@@ -3,16 +3,22 @@
   import DailyCard from '$lib/components/DailyCard.svelte';
   import DurationPrompt from '$lib/components/DurationPrompt.svelte';
   import HistoryView from '$lib/components/HistoryView.svelte';
+  import SettingsModal from '$lib/components/SettingsModal.svelte';
   import TopBar from '$lib/components/TopBar.svelte';
   import {
     addTodo,
     deleteTodo,
     loadTodos,
+    persistenceSettings,
     reorderVisibleTodos,
+    syncState,
+    syncTodosNow,
     todoItems,
     toggleTodoComplete,
+    updatePersistenceSettings,
     updateTodo
   } from '$lib/stores/todos';
+  import type { PersistenceSettings } from '$lib/persistence/persistenceSettings';
   import type { CompletionFilter, HistoryRange, TodoItem } from '$lib/types';
   import { filterTodos } from '$lib/filter/filterTodos';
   import { parseTodoFilter } from '$lib/filter/parseTodoFilter';
@@ -22,6 +28,7 @@
   let historyRange: HistoryRange = 7;
   let filterError: string | null = null;
   let pendingDurationTodo: TodoItem | null = null;
+  let settingsOpen = false;
 
   $: parsedFilter = parseTodoFilter(filterText);
   $: filterError = parsedFilter.ok ? null : parsedFilter.error;
@@ -71,6 +78,11 @@
     pendingDurationTodo = null;
   }
 
+  async function handleSaveSettings(event: CustomEvent<PersistenceSettings>) {
+    await updatePersistenceSettings(event.detail);
+    settingsOpen = false;
+  }
+
   function sortByOrder(a: TodoItem, b: TodoItem) {
     return a.order - b.order;
   }
@@ -101,6 +113,9 @@
     bind:completionFilter
     bind:historyRange
     {filterError}
+    sync={$syncState}
+    on:openSettings={() => (settingsOpen = true)}
+    on:syncNow={syncTodosNow}
   />
 
   <section class="workspace" aria-label="Dogpile workspace">
@@ -128,5 +143,15 @@
     on:cancel={() => (pendingDurationTodo = null)}
     on:saveDuration={(event) => completePendingTodo(event.detail.durationMinutes)}
     on:skip={() => completePendingTodo()}
+  />
+{/if}
+
+{#if settingsOpen}
+  <SettingsModal
+    settings={$persistenceSettings}
+    sync={$syncState}
+    on:close={() => (settingsOpen = false)}
+    on:save={handleSaveSettings}
+    on:syncNow={syncTodosNow}
   />
 {/if}

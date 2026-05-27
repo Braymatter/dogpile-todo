@@ -1,17 +1,36 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Moon, Sun } from '@lucide/svelte';
+  import { createEventDispatcher } from 'svelte';
+  import { Cloud, CloudOff, Moon, RefreshCw, Settings, Sun } from '@lucide/svelte';
   import type { CompletionFilter, HistoryRange } from '$lib/types';
+  import type { SyncState } from '$lib/stores/todos';
   import PomodoroTimer from './PomodoroTimer.svelte';
 
   export let filterText = '';
   export let completionFilter: CompletionFilter = 'all';
   export let historyRange: HistoryRange = 7;
   export let filterError: string | null = null;
+  export let sync: SyncState = {
+    status: 'local',
+    message: 'Local storage'
+  };
 
   type Theme = 'dark' | 'light';
 
+  const dispatch = createEventDispatcher<{
+    openSettings: void;
+    syncNow: void;
+  }>();
+
   let theme: Theme = 'dark';
+
+  $: syncTitle = sync.lastSyncedAt
+    ? `${sync.message} at ${new Date(sync.lastSyncedAt).toLocaleTimeString([], {
+        hour: 'numeric',
+        minute: '2-digit'
+      })}`
+    : sync.message;
+  $: syncLabel = getSyncLabel(sync.status);
 
   onMount(() => {
     const storedTheme = localStorage.getItem('dogpile.theme');
@@ -27,6 +46,16 @@
 
   function applyTheme(nextTheme: Theme) {
     document.documentElement.dataset.theme = nextTheme;
+  }
+
+  function getSyncLabel(status: SyncState['status']) {
+    if (status === 'local') return 'Local';
+    if (status === 'pending') return 'Queued';
+    if (status === 'syncing') return 'Syncing';
+    if (status === 'loading') return 'Loading';
+    if (status === 'synced') return 'Synced';
+    if (status === 'conflict') return 'Merging';
+    return 'Sync error';
   }
 </script>
 
@@ -79,6 +108,35 @@
     </div>
 
     <PomodoroTimer />
+
+    <div class:local={sync.status === 'local'} class:error={sync.status === 'error'} class="sync-pill" title={syncTitle}>
+      {#if sync.status === 'local'}
+        <CloudOff size={16} aria-hidden="true" />
+      {:else}
+        <Cloud size={16} aria-hidden="true" />
+      {/if}
+      <span>{syncLabel}</span>
+      <button
+        class="icon-button"
+        aria-label="Sync now"
+        disabled={sync.status === 'local'}
+        title="Sync now"
+        type="button"
+        on:click={() => dispatch('syncNow')}
+      >
+        <RefreshCw size={15} aria-hidden="true" />
+      </button>
+    </div>
+
+    <button
+      class="theme-toggle"
+      aria-label="Open settings"
+      title="Settings"
+      type="button"
+      on:click={() => dispatch('openSettings')}
+    >
+      <Settings size={17} aria-hidden="true" />
+    </button>
 
     <button
       class="theme-toggle"
