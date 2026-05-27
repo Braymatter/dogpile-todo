@@ -155,8 +155,10 @@ button {
   flex-direction: column;
   gap: 22px;
   width: min(1640px, 100%);
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
   margin: 0 auto;
+  overflow: hidden;
   padding: 24px;
 }
 
@@ -358,17 +360,26 @@ button {
   display: grid;
   grid-template-columns: minmax(520px, 1.12fr) minmax(500px, 0.88fr);
   gap: 22px;
-  align-items: start;
-  min-height: calc(100vh - 166px);
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
 }
 
 .history-pane,
 .daily-pane {
   min-width: 0;
+  min-height: 0;
+}
+
+.history-pane {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .daily-pane {
-  padding-top: 60px;
+  display: flex;
+  padding-top: 67px;
+  padding-bottom: 14px;
 }
 
 .card {
@@ -383,7 +394,8 @@ button {
 
 .daily-card {
   display: flex;
-  min-height: max(640px, calc(100vh - 226px));
+  min-height: 0;
+  flex: 1;
   flex-direction: column;
   gap: 20px;
   padding: 24px;
@@ -684,7 +696,7 @@ button {
   grid-auto-columns: clamp(340px, 38vw, 430px);
   grid-auto-flow: column;
   gap: 14px;
-  height: max(640px, calc(100vh - 226px));
+  min-height: 0;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   padding: 2px 4px 14px 2px;
@@ -905,6 +917,12 @@ button {
 }
 
 @media (max-width: 1120px) {
+  .app-shell {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
   .top-bar {
     grid-template-columns: 1fr;
   }
@@ -929,6 +947,10 @@ button {
 
   .daily-card {
     min-height: 640px;
+  }
+
+  .history-grid {
+    height: 640px;
   }
 }
 
