@@ -1,10 +1,9 @@
 import Fuse from 'fuse.js';
 import type { TodoItem } from '$lib/types';
 import type { TodoFilterQuery } from './filterTypes';
-import { evaluateTodoFilter } from './evaluateTodoFilter';
 
 export function filterTodos(todos: TodoItem[], query: TodoFilterQuery) {
-  const tagFilteredTodos = todos.filter((todo) => evaluateTodoFilter(todo, query));
+  const tagFilteredTodos = todos.filter((todo) => hasTags(todo, query.tags));
 
   if (!query.searchText) {
     return tagFilteredTodos;
@@ -22,4 +21,11 @@ export function filterTodos(todos: TodoItem[], query: TodoFilterQuery) {
   const matchingIds = new Set(fuse.search(query.searchText).map((result) => result.item.id));
 
   return tagFilteredTodos.filter((todo) => matchingIds.has(todo.id));
+}
+
+function hasTags(todo: TodoItem, requiredTags: string[]) {
+  if (requiredTags.length === 0) return true;
+
+  const tags = new Set(todo.tags.map((tag) => tag.toLowerCase()));
+  return requiredTags.every((tag) => tags.has(tag.toLowerCase()));
 }

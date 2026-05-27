@@ -50,10 +50,7 @@
       updates: {
         title: titleDraft,
         notes: notesDraft,
-          tags: tagsDraft
-            .split(',')
-            .map((tag) => tag.trim())
-            .filter(Boolean)
+        tags: parseTags(tagsDraft)
       }
     });
     editing = false;
@@ -70,11 +67,20 @@
 
   function saveDuration() {
     const trimmed = String(durationDraft).trim();
+    const minutes = Number(trimmed);
 
     dispatch('durationChange', {
       id: todo.id,
-      durationMinutes: trimmed === '' ? undefined : Math.max(0, Math.round(Number(trimmed)))
+      durationMinutes:
+        trimmed === '' || !Number.isFinite(minutes) ? undefined : Math.max(0, Math.round(minutes))
     });
+  }
+
+  function parseTags(value: string) {
+    return value
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean);
   }
 </script>
 
@@ -144,7 +150,12 @@
           <span>Notes</span>
           <textarea bind:value={notesDraft} rows="4" placeholder="Add notes"></textarea>
         </label>
-        <button class="secondary-button compact-save" disabled={!notesDirty} type="button" on:click={saveNotes}>
+        <button
+          class="secondary-button compact-save"
+          disabled={!notesDirty}
+          type="button"
+          on:click={saveNotes}
+        >
           <Save size={15} aria-hidden="true" />
           Save notes
         </button>
@@ -154,7 +165,13 @@
 
   <div class="row-actions">
     {#if editing}
-      <button class="icon-button" aria-label="Save task" title="Save" type="button" on:click={saveEdits}>
+      <button
+        class="icon-button"
+        aria-label="Save task"
+        title="Save"
+        type="button"
+        on:click={saveEdits}
+      >
         <Save size={16} aria-hidden="true" />
       </button>
       <button

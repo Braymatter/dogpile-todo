@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { Plus } from '@lucide/svelte';
+  import { parseDashTagInput } from '$lib/parseDashTagInput';
   import type { TodoItem } from '$lib/types';
   import TodoItemRow from './TodoItemRow.svelte';
 
@@ -27,11 +28,11 @@
   $: openCount = todos.filter((todo) => !todo.completed).length;
 
   function submitTodo(value = quickAdd) {
-    const parsed = parseQuickAdd(value);
-    if (!parsed.title) return;
+    const parsed = parseDashTagInput(value);
+    if (!parsed.text) return;
 
     dispatch('addTodo', {
-      title: parsed.title,
+      title: parsed.text,
       notes: '',
       tags: parsed.tags
     });
@@ -44,29 +45,6 @@
 
     event.preventDefault();
     submitTodo((event.currentTarget as HTMLInputElement).value);
-  }
-
-  function parseQuickAdd(value: string) {
-    const titleParts: string[] = [];
-    const tags: string[] = [];
-
-    value
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
-      .forEach((part) => {
-        if (part.startsWith('-') && part.length > 1) {
-          tags.push(part.slice(1));
-          return;
-        }
-
-        titleParts.push(part);
-      });
-
-    return {
-      title: titleParts.join(' ').trim(),
-      tags
-    };
   }
 
   function handlePointerDown(event: PointerEvent, id: string) {
@@ -122,7 +100,6 @@
     dispatch('reorderTodos', { ids });
     handleDragEnd();
   }
-
 </script>
 
 <article class="daily-card card">
