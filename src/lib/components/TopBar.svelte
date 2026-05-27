@@ -1,0 +1,65 @@
+<script lang="ts">
+  import type { CompletionFilter, HistoryRange } from '$lib/types';
+  import PomodoroTimer from './PomodoroTimer.svelte';
+
+  export let filterText = '';
+  export let completionFilter: CompletionFilter = 'all';
+  export let historyRange: HistoryRange = 7;
+  export let filterError: string | null = null;
+</script>
+
+<header class="top-bar">
+  <div class="brand">
+    <p class="eyebrow">Prioritized work</p>
+    <h1>Dogpile</h1>
+  </div>
+
+  <div class="toolbar" aria-label="Filters and timer">
+    <label class="field filter-field">
+      <span>Filter</span>
+      <input
+        bind:value={filterText}
+        aria-invalid={Boolean(filterError)}
+        placeholder="(TagA | TagB) TagC"
+        type="text"
+      />
+    </label>
+
+    <label class="field status-field">
+      <span>Status</span>
+      <select bind:value={completionFilter}>
+        <option value="all">All</option>
+        <option value="incomplete">Incomplete</option>
+        <option value="completed">Completed</option>
+      </select>
+    </label>
+
+    <div class="field">
+      <span>History</span>
+      <div class="segmented" aria-label="History range">
+        <button
+          aria-pressed={historyRange === 7}
+          class:active={historyRange === 7}
+          type="button"
+          on:click={() => (historyRange = 7)}
+        >
+          7 days
+        </button>
+        <button
+          aria-pressed={historyRange === 30}
+          class:active={historyRange === 30}
+          type="button"
+          on:click={() => (historyRange = 30)}
+        >
+          30 days
+        </button>
+      </div>
+    </div>
+
+    <PomodoroTimer />
+  </div>
+
+  {#if filterError}
+    <p class="filter-error">{filterError}</p>
+  {/if}
+</header>
