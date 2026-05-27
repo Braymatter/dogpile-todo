@@ -684,12 +684,21 @@ button {
   grid-auto-columns: clamp(340px, 38vw, 430px);
   grid-auto-flow: column;
   gap: 14px;
+  height: max(640px, calc(100vh - 226px));
   overflow-x: auto;
   overscroll-behavior-x: contain;
   padding: 2px 4px 14px 2px;
   scroll-padding-inline: 2px;
   scroll-snap-type: x proximity;
   scrollbar-color: var(--line-strong) transparent;
+}
+
+.history-column {
+  display: grid;
+  height: 100%;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  scroll-snap-align: end;
 }
 
 .history-grid::-webkit-scrollbar {
@@ -709,10 +718,10 @@ button {
 
 .day-card {
   display: grid;
-  min-height: 230px;
+  min-height: 0;
   grid-template-rows: auto 1fr auto;
   gap: 12px;
-  scroll-snap-align: end;
+  overflow: hidden;
   padding: 16px;
 }
 
@@ -750,9 +759,12 @@ button {
   display: grid;
   align-content: start;
   gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
   margin: 0;
   padding: 0;
   list-style: none;
+  scrollbar-color: var(--line-strong) transparent;
 }
 
 .day-card li {

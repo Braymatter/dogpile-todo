@@ -3,12 +3,20 @@
   import type { HistoryRange, TodoItem } from '$lib/types';
   import DayCard from './DayCard.svelte';
 
+  type HistoryDay = {
+    key: string;
+    date: Date;
+    todos: TodoItem[];
+    totalMinutes: number;
+  };
+
   export let todos: TodoItem[] = [];
   export let range: HistoryRange = 7;
 
   let railElement: HTMLDivElement;
 
   $: days = buildDays(range, todos);
+  $: columns = buildColumns(days);
   $: scrollKey = `${range}:${days[0]?.key ?? ''}:${days[days.length - 1]?.key ?? ''}`;
   $: if (railElement && scrollKey) {
     void scrollToNewest();
@@ -18,7 +26,7 @@
     void scrollToNewest();
   });
 
-  function buildDays(dayCount: HistoryRange, completedTodos: TodoItem[]) {
+  function buildDays(dayCount: HistoryRange, completedTodos: TodoItem[]): HistoryDay[] {
     const today = startOfDay(new Date());
     const byDate = new Map<string, TodoItem[]>();
 
@@ -59,6 +67,22 @@
     ).padStart(2, '0')}`;
   }
 
+  function buildColumns(currentDays: HistoryDay[]) {
+    const rowsPerColumn = 3;
+    const newestFirst = currentDays.slice().reverse();
+    const nextColumns: { key: string; days: HistoryDay[] }[] = [];
+
+    for (let index = 0; index < newestFirst.length; index += rowsPerColumn) {
+      const columnDays = newestFirst.slice(index, index + rowsPerColumn);
+      nextColumns.unshift({
+        key: columnDays.map((day) => day.key).join(':'),
+        days: columnDays
+      });
+    }
+
+    return nextColumns;
+  }
+
   async function scrollToNewest() {
     if (!railElement || !days.length) return;
 
@@ -79,7 +103,11 @@
 </div>
 
 <div bind:this={railElement} class="history-grid" aria-label="Previous completed days">
-  {#each days as day (day.key)}
-    <DayCard {day} />
+  {#each columns as column (column.key)}
+    <div class="history-column">
+      {#each column.days as day (day.key)}
+        <DayCard {day} />
+      {/each}
+    </div>
   {/each}
 </div>
