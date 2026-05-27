@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import { Moon, Sun } from '@lucide/svelte';
   import type { CompletionFilter, HistoryRange } from '$lib/types';
   import PomodoroTimer from './PomodoroTimer.svelte';
 
@@ -6,6 +8,26 @@
   export let completionFilter: CompletionFilter = 'all';
   export let historyRange: HistoryRange = 7;
   export let filterError: string | null = null;
+
+  type Theme = 'dark' | 'light';
+
+  let theme: Theme = 'dark';
+
+  onMount(() => {
+    const storedTheme = localStorage.getItem('dogpile.theme');
+    theme = storedTheme === 'light' ? 'light' : 'dark';
+    applyTheme(theme);
+  });
+
+  function toggleTheme() {
+    theme = theme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('dogpile.theme', theme);
+    applyTheme(theme);
+  }
+
+  function applyTheme(nextTheme: Theme) {
+    document.documentElement.dataset.theme = nextTheme;
+  }
 </script>
 
 <header class="top-bar">
@@ -20,7 +42,7 @@
       <input
         bind:value={filterText}
         aria-invalid={Boolean(filterError)}
-        placeholder="(TagA | TagB) TagC"
+        placeholder="fuzzy search -tag"
         type="text"
       />
     </label>
@@ -57,6 +79,20 @@
     </div>
 
     <PomodoroTimer />
+
+    <button
+      class="theme-toggle"
+      aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+      type="button"
+      on:click={toggleTheme}
+    >
+      {#if theme === 'dark'}
+        <Sun size={17} aria-hidden="true" />
+      {:else}
+        <Moon size={17} aria-hidden="true" />
+      {/if}
+    </button>
   </div>
 
   {#if filterError}

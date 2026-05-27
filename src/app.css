@@ -1,21 +1,53 @@
 :root {
-  color: #1f2933;
-  background: #f7f8fb;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --surface: #ffffff;
-  --surface-soft: #f1f5f8;
-  --line: #d8dee8;
-  --text: #1f2933;
-  --muted: #667085;
+  color: var(--text);
+  background: var(--background);
+  color-scheme: dark;
+  --background: #090b10;
+  --surface: rgba(15, 22, 30, 0.9);
+  --surface-alt: rgba(11, 17, 23, 0.92);
+  --surface-soft: rgba(36, 51, 62, 0.78);
+  --field: rgba(8, 13, 18, 0.72);
+  --line: rgba(130, 244, 229, 0.2);
+  --line-strong: rgba(130, 244, 229, 0.38);
+  --text: #eef8f4;
+  --muted: #8ca7a4;
+  --accent: #58e0c5;
+  --accent-strong: #97fff0;
+  --accent-soft: rgba(88, 224, 197, 0.15);
+  --secondary: #d9a7ff;
+  --warning: #ffc857;
+  --danger: #ff7b88;
+  --shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+  --glow: 0 0 0 1px rgba(151, 255, 240, 0.08), 0 0 32px rgba(88, 224, 197, 0.12);
+  --grid-line: rgba(130, 244, 229, 0.055);
+  --star: rgba(238, 248, 244, 0.38);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --background: #eef2f1;
+  --surface: rgba(255, 255, 255, 0.88);
+  --surface-alt: rgba(248, 251, 250, 0.95);
+  --surface-soft: #edf4f3;
+  --field: #ffffff;
+  --line: rgba(39, 98, 92, 0.18);
+  --line-strong: rgba(39, 98, 92, 0.34);
+  --text: #172421;
+  --muted: #627470;
   --accent: #287c78;
-  --accent-strong: #17635f;
+  --accent-strong: #145e59;
   --accent-soft: #d9eeeb;
-  --warning: #b7791f;
+  --secondary: #7449a6;
+  --warning: #9a6a12;
   --danger: #b42318;
-  --shadow: 0 10px 28px rgba(23, 42, 58, 0.1);
+  --shadow: 0 16px 38px rgba(23, 42, 58, 0.14);
+  --glow: 0 0 0 1px rgba(40, 124, 120, 0.08);
+  --grid-line: rgba(39, 98, 92, 0.055);
+  --star: rgba(39, 98, 92, 0.18);
 }
 
 * {
@@ -26,8 +58,35 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  background: #f7f8fb;
+  background:
+    radial-gradient(circle at 12px 18px, var(--star) 1px, transparent 1.6px),
+    radial-gradient(circle at 78px 92px, var(--star) 1px, transparent 1.5px),
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+    var(--background);
+  background-size:
+    122px 122px,
+    176px 176px,
+    42px 42px,
+    42px 42px,
+    auto;
   color: var(--text);
+}
+
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  content: '';
+  background:
+    linear-gradient(180deg, rgba(88, 224, 197, 0.09), transparent 32%),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 7px,
+      rgba(238, 248, 244, 0.018) 8px
+    );
 }
 
 button,
@@ -47,10 +106,11 @@ textarea {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #fff;
+  background: var(--field);
   color: var(--text);
   outline: none;
   transition:
+    background-color 140ms ease,
     border-color 140ms ease,
     box-shadow 140ms ease;
 }
@@ -67,11 +127,20 @@ textarea {
   resize: vertical;
 }
 
+::placeholder {
+  color: color-mix(in srgb, var(--muted) 76%, transparent);
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
 input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(40, 124, 120, 0.14);
+  box-shadow: 0 0 0 3px var(--accent-soft), 0 0 22px rgba(88, 224, 197, 0.16);
 }
 
 button {
@@ -80,6 +149,8 @@ button {
 }
 
 .app-shell {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: 22px;
@@ -97,8 +168,11 @@ button {
   padding: 18px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
+  background:
+    linear-gradient(135deg, rgba(88, 224, 197, 0.08), transparent 38%),
+    var(--surface);
+  box-shadow: var(--shadow), var(--glow);
+  backdrop-filter: blur(18px);
 }
 
 .brand h1,
@@ -109,8 +183,11 @@ button {
 }
 
 .brand h1 {
+  color: var(--text);
   font-size: clamp(2rem, 4vw, 3.1rem);
   font-weight: 760;
+  letter-spacing: 0;
+  text-shadow: 0 0 22px rgba(88, 224, 197, 0.22);
 }
 
 .eyebrow {
@@ -124,7 +201,7 @@ button {
 
 .toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(140px, 180px) auto minmax(250px, auto);
+  grid-template-columns: minmax(240px, 1fr) minmax(140px, 180px) auto minmax(250px, auto) auto;
   gap: 12px;
   align-items: end;
 }
@@ -135,12 +212,13 @@ button {
 }
 
 .field > span,
-.add-todo span,
 .edit-grid span,
 .duration-field span {
   color: var(--muted);
   font-size: 0.76rem;
   font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
 }
 
 .filter-error {
@@ -157,7 +235,7 @@ button {
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #fff;
+  background: var(--field);
 }
 
 .segmented button,
@@ -179,6 +257,7 @@ button {
 .timer-modes button.active {
   background: var(--accent-soft);
   color: var(--accent-strong);
+  box-shadow: inset 0 0 0 1px rgba(151, 255, 240, 0.12);
 }
 
 .pomodoro {
@@ -194,10 +273,12 @@ button {
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #fff;
+  background: var(--field);
+  color: var(--accent-strong);
   font-variant-numeric: tabular-nums;
   font-weight: 760;
   text-align: center;
+  text-shadow: 0 0 12px rgba(88, 224, 197, 0.35);
 }
 
 .timer-actions {
@@ -206,18 +287,29 @@ button {
 }
 
 .timer-actions button,
-.icon-button {
+.icon-button,
+.theme-toggle {
   display: inline-grid;
   width: 34px;
   height: 34px;
   place-items: center;
+  border: 1px solid transparent;
   background: var(--surface-soft);
   color: var(--text);
 }
 
 .timer-actions button:hover,
-.icon-button:hover {
-  background: #e6ebf2;
+.icon-button:hover,
+.theme-toggle:hover {
+  border-color: var(--line-strong);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.theme-toggle {
+  align-self: end;
+  height: 38px;
+  color: var(--accent-strong);
 }
 
 .workspace {
@@ -240,8 +332,11 @@ button {
 .card {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 120px),
+    var(--surface);
+  box-shadow: var(--shadow), var(--glow);
+  backdrop-filter: blur(16px);
 }
 
 .daily-card {
@@ -292,7 +387,7 @@ button {
   gap: 7px;
   padding: 0 14px;
   background: var(--accent);
-  color: #fff;
+  color: #06110f;
   font-weight: 760;
 }
 
@@ -308,7 +403,7 @@ button {
   gap: 7px;
   padding: 0 12px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--field);
   color: var(--text);
   font-weight: 760;
 }
@@ -346,6 +441,7 @@ button {
   gap: 16px;
   overflow-y: auto;
   padding: 2px 2px 4px;
+  scrollbar-color: var(--line-strong) transparent;
 }
 
 .daily-task-list {
@@ -368,6 +464,7 @@ button {
   border-bottom-color: var(--line);
   border-radius: 0;
   background: transparent;
+  color: var(--text);
   font-size: 1.03rem;
 }
 
@@ -389,7 +486,7 @@ button {
   height: 4px;
   border-radius: 999px;
   background: var(--accent);
-  box-shadow: 0 0 0 4px rgba(40, 124, 120, 0.14);
+  box-shadow: 0 0 0 4px var(--accent-soft), 0 0 24px rgba(88, 224, 197, 0.5);
 }
 
 .todo-row {
@@ -401,11 +498,17 @@ button {
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background:
+    linear-gradient(90deg, rgba(88, 224, 197, 0.045), transparent 50%),
+    var(--surface-alt);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
 }
 
 .todo-row.completed {
-  background: #fbfcfd;
+  border-color: rgba(217, 167, 255, 0.24);
+  background:
+    linear-gradient(90deg, rgba(217, 167, 255, 0.06), transparent 52%),
+    var(--surface-alt);
 }
 
 .drag-handle {
@@ -413,7 +516,7 @@ button {
   width: 20px;
   min-height: 34px;
   place-items: center;
-  color: #98a2b3;
+  color: var(--muted);
   cursor: grab;
 }
 
@@ -440,6 +543,7 @@ button {
 .todo-row.completed .todo-title-row strong {
   color: var(--muted);
   text-decoration: line-through;
+  text-decoration-color: var(--secondary);
 }
 
 .todo-notes {
@@ -455,7 +559,7 @@ button {
   gap: 10px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #edf0f5;
+  border-top: 1px solid var(--line);
 }
 
 .notes-panel label {
@@ -483,7 +587,8 @@ button {
 .tag-list span {
   padding: 3px 7px;
   border-radius: 999px;
-  background: #edf4f3;
+  border: 1px solid rgba(88, 224, 197, 0.16);
+  background: var(--accent-soft);
   color: var(--accent-strong);
   font-size: 0.76rem;
   font-weight: 740;
@@ -591,7 +696,7 @@ button {
 
 .day-card li {
   padding-bottom: 10px;
-  border-bottom: 1px solid #edf0f5;
+  border-bottom: 1px solid var(--line);
 }
 
 .day-card li p {
@@ -623,7 +728,8 @@ button {
   display: grid;
   place-items: center;
   padding: 18px;
-  background: rgba(31, 41, 51, 0.3);
+  background: rgba(3, 7, 10, 0.72);
+  backdrop-filter: blur(10px);
 }
 
 .duration-modal {
@@ -654,6 +760,7 @@ button {
   border-radius: 8px;
   background: var(--accent-soft);
   color: var(--accent-strong);
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .duration-modal form,
