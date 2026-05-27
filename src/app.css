@@ -681,20 +681,39 @@ button {
 
 .history-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  grid-auto-columns: clamp(340px, 38vw, 430px);
+  grid-auto-flow: column;
   gap: 14px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding: 2px 4px 14px 2px;
+  scroll-padding-inline: 2px;
+  scroll-snap-type: x proximity;
+  scrollbar-color: var(--line-strong) transparent;
 }
 
-.history-grid.month-grid {
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+.history-grid::-webkit-scrollbar {
+  height: 10px;
+}
+
+.history-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.history-grid::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--line-strong);
+  background-clip: padding-box;
 }
 
 .day-card {
   display: grid;
-  min-height: 190px;
+  min-height: 230px;
   grid-template-rows: auto 1fr auto;
   gap: 12px;
-  padding: 14px;
+  scroll-snap-align: end;
+  padding: 16px;
 }
 
 .day-card header,
@@ -912,10 +931,12 @@ button {
   }
 
   .toolbar,
-  .settings-grid,
-  .history-grid,
-  .history-grid.month-grid {
+  .settings-grid {
     grid-template-columns: 1fr;
+  }
+
+  .history-grid {
+    grid-auto-columns: min(86vw, 390px);
   }
 
   .segmented,

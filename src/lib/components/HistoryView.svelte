@@ -1,11 +1,22 @@
 <script lang="ts">
+  import { onMount, tick } from 'svelte';
   import type { HistoryRange, TodoItem } from '$lib/types';
   import DayCard from './DayCard.svelte';
 
   export let todos: TodoItem[] = [];
   export let range: HistoryRange = 7;
 
+  let railElement: HTMLDivElement;
+
   $: days = buildDays(range, todos);
+  $: scrollKey = `${range}:${days[0]?.key ?? ''}:${days[days.length - 1]?.key ?? ''}`;
+  $: if (railElement && scrollKey) {
+    void scrollToNewest();
+  }
+
+  onMount(() => {
+    void scrollToNewest();
+  });
 
   function buildDays(dayCount: HistoryRange, completedTodos: TodoItem[]) {
     const today = startOfDay(new Date());
@@ -21,7 +32,7 @@
 
     return Array.from({ length: dayCount }, (_, index) => {
       const date = new Date(today);
-      date.setDate(today.getDate() - index - 1);
+      date.setDate(today.getDate() - dayCount + index);
       const key = toDateKey(date);
       const dayTodos = (byDate.get(key) ?? []).sort((a, b) => {
         const aTime = a.completedAt ? new Date(a.completedAt).getTime() : 0;
@@ -47,6 +58,17 @@
       date.getDate()
     ).padStart(2, '0')}`;
   }
+
+  async function scrollToNewest() {
+    if (!railElement || !days.length) return;
+
+    await tick();
+    await new Promise(requestAnimationFrame);
+    railElement.scrollTo({
+      left: railElement.scrollWidth - railElement.clientWidth,
+      behavior: 'auto'
+    });
+  }
 </script>
 
 <div class="history-header">
@@ -56,7 +78,7 @@
   </div>
 </div>
 
-<div class:month-grid={range === 30} class="history-grid">
+<div bind:this={railElement} class="history-grid" aria-label="Previous completed days">
   {#each days as day (day.key)}
     <DayCard {day} />
   {/each}
