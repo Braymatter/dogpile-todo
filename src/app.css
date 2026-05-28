@@ -50,6 +50,11 @@
   --star: rgba(39, 98, 92, 0.18);
 }
 
+:root[data-theme='light'] body::after {
+  mix-blend-mode: multiply;
+  opacity: 0.4;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -70,6 +75,7 @@ body {
     42px 42px,
     42px 42px,
     auto;
+  animation: star-drift 56s linear infinite;
   color: var(--text);
 }
 
@@ -87,6 +93,81 @@ body::before {
       transparent 7px,
       rgba(238, 248, 244, 0.018) 8px
     );
+  animation: scanline-drift 14s linear infinite;
+}
+
+body::after {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  content: '';
+  background:
+    radial-gradient(circle at 14% 22%, rgba(151, 255, 240, 0.22) 0 1px, transparent 2px),
+    radial-gradient(circle at 74% 18%, rgba(217, 167, 255, 0.16) 0 1px, transparent 2px),
+    radial-gradient(circle at 86% 72%, rgba(151, 255, 240, 0.16) 0 1px, transparent 2px),
+    linear-gradient(112deg, transparent 0 43%, rgba(151, 255, 240, 0.045) 49%, transparent 55%);
+  mix-blend-mode: screen;
+  opacity: 0.64;
+  animation: signal-sweep 18s ease-in-out infinite;
+}
+
+@keyframes star-drift {
+  from {
+    background-position:
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0;
+  }
+
+  to {
+    background-position:
+      122px 244px,
+      -176px 176px,
+      42px 84px,
+      84px 42px,
+      0 0;
+  }
+}
+
+@keyframes scanline-drift {
+  from {
+    background-position:
+      0 0,
+      0 0;
+  }
+
+  to {
+    background-position:
+      0 0,
+      0 96px;
+  }
+}
+
+@keyframes signal-sweep {
+  0%,
+  100% {
+    transform: translate3d(-5%, -2%, 0);
+    opacity: 0.42;
+  }
+
+  45% {
+    transform: translate3d(5%, 2%, 0);
+    opacity: 0.74;
+  }
+}
+
+@keyframes soft-pulse {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 1px rgba(151, 255, 240, 0.12), 0 0 10px rgba(88, 224, 197, 0.1);
+  }
+
+  50% {
+    box-shadow: inset 0 0 0 1px rgba(151, 255, 240, 0.2), 0 0 22px rgba(88, 224, 197, 0.22);
+  }
 }
 
 button,
@@ -251,6 +332,10 @@ button {
   background: transparent;
   color: var(--muted);
   font-weight: 700;
+  transition:
+    background-color 150ms ease,
+    box-shadow 150ms ease,
+    color 150ms ease;
 }
 
 .segmented button + button,
@@ -263,6 +348,12 @@ button {
   background: var(--accent-soft);
   color: var(--accent-strong);
   box-shadow: inset 0 0 0 1px rgba(151, 255, 240, 0.12);
+}
+
+.segmented button:not(.active):hover,
+.timer-modes button:not(.active):hover {
+  background: color-mix(in srgb, var(--surface-soft) 72%, transparent);
+  color: var(--text);
 }
 
 .pomodoro {
@@ -280,6 +371,7 @@ button {
   border-radius: 6px;
   background: var(--field);
   color: var(--accent-strong);
+  animation: soft-pulse 4.8s ease-in-out infinite;
   font-variant-numeric: tabular-nums;
   font-weight: 760;
   text-align: center;
@@ -301,6 +393,12 @@ button {
   border: 1px solid transparent;
   background: var(--surface-soft);
   color: var(--text);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    color 150ms ease,
+    transform 150ms ease;
 }
 
 .timer-actions button:hover,
@@ -309,6 +407,8 @@ button {
   border-color: var(--line-strong);
   background: var(--accent-soft);
   color: var(--accent-strong);
+  box-shadow: 0 0 18px rgba(88, 224, 197, 0.16);
+  transform: translateY(-1px);
 }
 
 .timer-actions button:disabled,
@@ -323,7 +423,9 @@ button {
 .theme-toggle:disabled:hover {
   border-color: transparent;
   background: var(--surface-soft);
+  box-shadow: none;
   color: var(--text);
+  transform: none;
 }
 
 .theme-toggle {
@@ -391,6 +493,18 @@ button {
     var(--surface);
   box-shadow: var(--shadow), var(--glow);
   backdrop-filter: blur(16px);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.card:hover {
+  border-color: var(--line-strong);
+  box-shadow:
+    var(--shadow),
+    0 0 0 1px rgba(151, 255, 240, 0.12),
+    0 0 38px rgba(88, 224, 197, 0.16);
 }
 
 .daily-card {
@@ -426,6 +540,7 @@ button {
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 760;
+  animation: soft-pulse 7.2s ease-in-out infinite;
 }
 
 .quick-add,
@@ -446,10 +561,16 @@ button {
   background: var(--accent);
   color: #06110f;
   font-weight: 760;
+  transition:
+    background-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
 }
 
 .primary-button:hover {
   background: var(--accent-strong);
+  box-shadow: 0 0 20px rgba(88, 224, 197, 0.24);
+  transform: translateY(-1px);
 }
 
 .secondary-button {
@@ -463,15 +584,30 @@ button {
   background: var(--field);
   color: var(--text);
   font-weight: 760;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
 }
 
 .secondary-button:hover {
+  border-color: var(--line-strong);
   background: var(--surface-soft);
+  box-shadow: 0 0 18px rgba(88, 224, 197, 0.12);
+  transform: translateY(-1px);
 }
 
 .secondary-button:disabled {
   cursor: default;
   opacity: 0.48;
+}
+
+.secondary-button:disabled:hover {
+  border-color: var(--line);
+  background: var(--field);
+  box-shadow: none;
+  transform: none;
 }
 
 .task-section {
@@ -559,6 +695,17 @@ button {
     linear-gradient(90deg, rgba(88, 224, 197, 0.045), transparent 50%),
     var(--surface-alt);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.todo-row:hover {
+  border-color: var(--line-strong);
+  box-shadow: inset 0 0 0 1px rgba(151, 255, 240, 0.08), 0 0 24px rgba(88, 224, 197, 0.1);
+  transform: translateY(-1px);
 }
 
 .todo-row-wide {
@@ -696,11 +843,18 @@ button {
   color: var(--accent-strong);
   font-size: 0.76rem;
   font-weight: 740;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    color 150ms ease,
+    transform 150ms ease;
 }
 
 .tag-chip:hover {
   border-color: var(--line-strong);
   background: color-mix(in srgb, var(--accent-soft) 75%, var(--surface-soft));
+  transform: translateY(-1px);
 }
 
 .filter-tag {
@@ -1144,6 +1298,34 @@ button {
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+
+  body,
+  body::before,
+  body::after {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .timer-actions button:hover,
+  .icon-button:hover,
+  .theme-toggle:hover,
+  .primary-button:hover,
+  .secondary-button:hover,
+  .todo-row:hover,
+  .tag-chip:hover {
+    transform: none;
+  }
 }
 
 @media (max-width: 1360px) {

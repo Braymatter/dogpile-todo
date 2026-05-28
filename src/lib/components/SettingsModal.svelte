@@ -66,6 +66,16 @@
     dispatch('save', normalizedDraft);
   }
 
+  function setAutoCompactWeekly(event: Event) {
+    draft = normalizePersistenceSettings({
+      ...draft,
+      github: {
+        ...draft.github,
+        autoCompactWeekly: (event.currentTarget as HTMLInputElement).checked
+      }
+    });
+  }
+
   function compactGitHubHistory() {
     if (!canCompactGitHub) return;
 
@@ -165,7 +175,11 @@
           </div>
 
           <label class="checkbox-field">
-            <input bind:checked={draft.github.autoCompactWeekly} type="checkbox" />
+            <input
+              checked={draft.github.autoCompactWeekly}
+              type="checkbox"
+              on:change={setAutoCompactWeekly}
+            />
             <span>Auto-compact weekly</span>
           </label>
 
