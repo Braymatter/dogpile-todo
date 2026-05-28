@@ -158,13 +158,19 @@
 <div class:editing class="history-todo-row">
   {#if editing}
     <div class="history-edit">
-      <input
-        bind:value={titleDraft}
-        aria-label="Task title"
-        type="text"
-        on:keydown={handleSaveKeydown}
-      />
-      <textarea bind:value={notesDraft} aria-label="Notes" rows="2" placeholder="Notes"></textarea>
+      <label class="history-edit-field">
+        <span>Task</span>
+        <input
+          bind:value={titleDraft}
+          aria-label="Task title"
+          type="text"
+          on:keydown={handleSaveKeydown}
+        />
+      </label>
+      <label class="history-edit-field note-edit-field compact-note-edit-field">
+        <span>Notes</span>
+        <textarea bind:value={notesDraft} aria-label="Notes" rows="3" placeholder="Add notes"></textarea>
+      </label>
       <div class="history-edit-line">
         <label>
           <span>Min</span>

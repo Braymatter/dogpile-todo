@@ -172,7 +172,7 @@
   }
 </script>
 
-<div class:completed={todo.completed} class:draggable={draggableRow} class="todo-row">
+<div class:completed={todo.completed} class:draggable={draggableRow} class:editing class="todo-row">
   {#if draggableRow}
     <span class="drag-handle" aria-hidden="true">
       <GripVertical size={17} />
@@ -196,12 +196,16 @@
   <div class="todo-content">
     {#if editing}
       <div class="edit-grid">
-        <label>
+        <label class="edit-field">
           <span>Task</span>
           <input bind:value={titleDraft} type="text" on:keydown={handleTitleKeydown} />
         </label>
+        <label class="edit-field note-edit-field">
+          <span>Notes</span>
+          <textarea bind:value={notesDraft} rows="3" placeholder="Add notes"></textarea>
+        </label>
         <form class="tag-entry" on:submit|preventDefault={() => addTags()}>
-          <label>
+          <label class="edit-field">
             <span>Add tag</span>
             <input
               bind:value={tagDraft}
@@ -321,7 +325,7 @@
     </div>
   {/if}
 
-  {#if notesExpanded}
+  {#if !editing && notesExpanded}
     <div class="notes-panel todo-row-wide">
       <label>
         <span>Notes</span>

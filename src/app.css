@@ -217,7 +217,8 @@ button {
 
 .field > span,
 .edit-grid span,
-.duration-field span {
+.duration-field span,
+.history-edit-field > span {
   color: var(--muted);
   font-size: 0.76rem;
   font-weight: 700;
@@ -429,7 +430,8 @@ button {
 
 .quick-add,
 .edit-grid label,
-.tag-entry {
+.tag-entry,
+.history-edit-field {
   display: grid;
   gap: 6px;
 }
@@ -574,6 +576,13 @@ button {
     var(--surface-alt);
 }
 
+.todo-row.editing {
+  border-color: var(--line-strong);
+  background:
+    linear-gradient(90deg, rgba(88, 224, 197, 0.075), transparent 56%),
+    var(--surface-alt);
+}
+
 .drag-handle {
   display: inline-grid;
   width: 20px;
@@ -646,6 +655,22 @@ button {
   color: var(--muted);
   font-size: 0.76rem;
   font-weight: 700;
+}
+
+.note-edit-field {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(88, 224, 197, 0.065), transparent 100%),
+    color-mix(in srgb, var(--field) 88%, transparent);
+}
+
+.note-edit-field textarea {
+  min-height: 86px;
+  border-color: color-mix(in srgb, var(--line) 76%, transparent);
+  background: color-mix(in srgb, var(--field) 88%, var(--surface-alt));
+  line-height: 1.4;
 }
 
 .compact-save {
@@ -846,6 +871,10 @@ button {
 
 .history-todo-row.editing {
   grid-template-columns: minmax(0, 1fr);
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--field) 78%, transparent);
 }
 
 .history-todo-main {
@@ -882,6 +911,20 @@ button {
 .history-edit input,
 .history-edit textarea {
   font-size: 0.86rem;
+}
+
+.history-edit-field > span {
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.compact-note-edit-field {
+  padding: 8px;
+}
+
+.compact-note-edit-field textarea {
+  min-height: 76px;
+  max-height: 150px;
 }
 
 .history-edit-line {
