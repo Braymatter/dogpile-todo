@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
   import { onMount } from 'svelte';
   import DailyCard from '$lib/components/DailyCard.svelte';
   import DurationPrompt from '$lib/components/DurationPrompt.svelte';
@@ -25,12 +26,15 @@
   import { parseTodoFilter } from '$lib/filter/parseTodoFilter';
   import { toggleFilterTag } from '$lib/filter/toggleFilterTag';
 
+  const FILTER_STORAGE_KEY = 'dogpile.filterText.v1';
+
   let filterText = '';
   let completionFilter: CompletionFilter = 'all';
   let historyRange: HistoryRange = 7;
   let filterError: string | null = null;
   let pendingDurationTodo: TodoItem | null = null;
   let settingsOpen = false;
+  let filterStorageReady = false;
 
   $: parsedFilter = parseTodoFilter(filterText);
   $: filterError = parsedFilter.ok ? null : parsedFilter.error;
@@ -50,8 +54,13 @@
   $: incompleteTodos = filteredTodos.filter((todo) => !todo.completed).sort(sortByOrder);
   $: dailyTodos = [...todayCompleted, ...incompleteTodos];
   $: historyTodos = filteredTodos.filter((todo) => todo.completed && !isToday(todo.completedAt));
+  $: if (browser && filterStorageReady) {
+    localStorage.setItem(FILTER_STORAGE_KEY, filterText);
+  }
 
   onMount(() => {
+    filterText = localStorage.getItem(FILTER_STORAGE_KEY) ?? '';
+    filterStorageReady = true;
     loadTodos();
   });
 
