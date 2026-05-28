@@ -34,6 +34,8 @@
   let tagDraft = '';
   let tagError = '';
   let durationDraft: string | number = todo.durationMinutes?.toString() ?? '';
+
+  $: hasNotes = Boolean(todo.notes?.trim());
   $: notesDirty = notesDraft !== (todo.notes ?? '');
   $: activeFilterTagSet = new Set(activeFilterTags.map((tag) => tag.toLowerCase()));
 
@@ -46,6 +48,10 @@
 
   $: if (browser && document.activeElement?.id !== `duration-${todo.id}`) {
     durationDraft = todo.durationMinutes?.toString() ?? '';
+  }
+
+  $: if (!hasNotes) {
+    notesExpanded = false;
   }
 
   function saveEdits() {
@@ -166,7 +172,7 @@
   }
 </script>
 
-<div class:completed={todo.completed} class="todo-row">
+<div class:completed={todo.completed} class:draggable={draggableRow} class="todo-row">
   {#if draggableRow}
     <span class="drag-handle" aria-hidden="true">
       <GripVertical size={17} />
@@ -228,47 +234,6 @@
       </div>
     {/if}
 
-    {#if todo.tags.length}
-      <div class:editable-tags={editing} class="tag-list" aria-label="Tags">
-        {#each todo.tags as tag}
-          {#if editing}
-            <button class="tag-chip" type="button" on:click={() => removeTag(tag)}>
-              {tag}
-              <X size={12} aria-hidden="true" />
-            </button>
-          {:else}
-            <button
-              class:active={isFilterTagActive(tag)}
-              class="tag-chip filter-tag"
-              aria-pressed={isFilterTagActive(tag)}
-              title={isFilterTagActive(tag) ? 'Remove tag from filter' : 'Add tag to filter'}
-              type="button"
-              on:click={() => dispatch('toggleTagFilter', { tag })}
-            >
-              {tag}
-            </button>
-          {/if}
-        {/each}
-      </div>
-    {/if}
-
-    {#if notesExpanded}
-      <div class="notes-panel">
-        <label>
-          <span>Notes</span>
-          <textarea bind:value={notesDraft} rows="4" placeholder="Add notes"></textarea>
-        </label>
-        <button
-          class="secondary-button compact-save"
-          disabled={!notesDirty}
-          type="button"
-          on:click={saveNotes}
-        >
-          <Save size={15} aria-hidden="true" />
-          Save notes
-        </button>
-      </div>
-    {/if}
   </div>
 
   <div class="row-actions">
@@ -294,9 +259,10 @@
     {:else}
       <button
         class="icon-button"
-        aria-expanded={notesExpanded}
-        aria-label={notesExpanded ? 'Collapse notes' : 'Expand notes'}
-        title={notesExpanded ? 'Collapse notes' : 'Expand notes'}
+        aria-expanded={hasNotes ? notesExpanded : undefined}
+        aria-label={hasNotes ? (notesExpanded ? 'Collapse notes' : 'Expand notes') : 'No notes'}
+        disabled={!hasNotes}
+        title={hasNotes ? (notesExpanded ? 'Collapse notes' : 'Expand notes') : 'No notes'}
         type="button"
         on:click={() => (notesExpanded = !notesExpanded)}
       >
@@ -326,4 +292,50 @@
       </button>
     {/if}
   </div>
+
+  {#if !editing && hasNotes}
+    <p class="todo-note-preview todo-row-wide">{todo.notes}</p>
+  {/if}
+
+  {#if todo.tags.length}
+    <div class:editable-tags={editing} class="tag-list todo-row-wide" aria-label="Tags">
+      {#each todo.tags as tag}
+        {#if editing}
+          <button class="tag-chip" type="button" on:click={() => removeTag(tag)}>
+            {tag}
+            <X size={12} aria-hidden="true" />
+          </button>
+        {:else}
+          <button
+            class:active={isFilterTagActive(tag)}
+            class="tag-chip filter-tag"
+            aria-pressed={isFilterTagActive(tag)}
+            title={isFilterTagActive(tag) ? 'Remove tag from filter' : 'Add tag to filter'}
+            type="button"
+            on:click={() => dispatch('toggleTagFilter', { tag })}
+          >
+            {tag}
+          </button>
+        {/if}
+      {/each}
+    </div>
+  {/if}
+
+  {#if notesExpanded}
+    <div class="notes-panel todo-row-wide">
+      <label>
+        <span>Notes</span>
+        <textarea bind:value={notesDraft} rows="4" placeholder="Add notes"></textarea>
+      </label>
+      <button
+        class="secondary-button compact-save"
+        disabled={!notesDirty}
+        type="button"
+        on:click={saveNotes}
+      >
+        <Save size={15} aria-hidden="true" />
+        Save notes
+      </button>
+    </div>
+  {/if}
 </div>

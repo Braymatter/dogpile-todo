@@ -7,6 +7,7 @@
   import TopBar from '$lib/components/TopBar.svelte';
   import {
     addTodo,
+    compactGitHubHistoryNow,
     deleteTodo,
     loadTodos,
     persistenceSettings,
@@ -73,6 +74,10 @@
     updateTodo(event.detail.id, { durationMinutes: event.detail.durationMinutes });
   }
 
+  function handleHistoryMarkIncomplete(event: CustomEvent<{ id: string }>) {
+    toggleTodoComplete(event.detail.id, false);
+  }
+
   function completePendingTodo(durationMinutes?: number) {
     if (!pendingDurationTodo) return;
 
@@ -130,7 +135,9 @@
         activeFilterTags={activeFilterTags}
         todos={historyTodos}
         range={historyRange}
+        on:markIncomplete={handleHistoryMarkIncomplete}
         on:toggleTagFilter={handleToggleTagFilter}
+        on:updateTodo={(event) => updateTodo(event.detail.id, event.detail.updates)}
       />
     </section>
 
@@ -163,6 +170,7 @@
   <SettingsModal
     settings={$persistenceSettings}
     sync={$syncState}
+    on:compactGitHubHistory={compactGitHubHistoryNow}
     on:close={() => (settingsOpen = false)}
     on:save={handleSaveSettings}
     on:syncNow={syncTodosNow}

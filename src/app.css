@@ -559,6 +559,14 @@ button {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
 }
 
+.todo-row-wide {
+  grid-column: 2 / -1;
+}
+
+.todo-row.draggable .todo-row-wide {
+  grid-column: 3 / -1;
+}
+
 .todo-row.completed {
   border-color: rgba(217, 167, 255, 0.24);
   background:
@@ -607,6 +615,18 @@ button {
   font-size: 0.9rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+.todo-note-preview {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: -4px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .notes-panel {
@@ -739,6 +759,7 @@ button {
 .history-column {
   display: grid;
   height: 100%;
+  min-height: 0;
   grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: 14px;
   scroll-snap-align: end;
@@ -761,16 +782,16 @@ button {
 
 .day-card {
   display: grid;
+  height: 100%;
   min-height: 0;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 12px;
   overflow: hidden;
   padding: 16px;
 }
 
 .day-card header,
-.day-card footer,
-.day-card li {
+.day-card footer {
   display: flex;
   gap: 10px;
   align-items: flex-start;
@@ -811,11 +832,117 @@ button {
 }
 
 .day-card li {
+  min-width: 0;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--line);
 }
 
+.history-todo-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+}
+
+.history-todo-row.editing {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.history-todo-main {
+  min-width: 0;
+}
+
+.history-todo-main p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.history-note-preview {
+  grid-column: 1 / -1;
+  display: -webkit-box;
+  overflow: hidden;
+  margin: -2px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.history-edit {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.history-edit input,
+.history-edit textarea {
+  font-size: 0.86rem;
+}
+
+.history-edit-line {
+  display: grid;
+  grid-template-columns: minmax(58px, 76px) minmax(0, 1fr);
+  gap: 7px;
+}
+
+.history-edit-line label {
+  display: grid;
+  gap: 4px;
+}
+
+.history-edit-line span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.history-todo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  justify-content: flex-end;
+}
+
+.history-todo-actions .icon-button {
+  width: 28px;
+  height: 28px;
+}
+
+.history-duration {
+  display: inline-flex;
+  min-width: 38px;
+  justify-content: flex-end;
+  color: var(--accent-strong);
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 28px;
+  white-space: nowrap;
+}
+
+.history-notes-panel {
+  grid-column: 1 / -1;
+  margin-top: 2px;
+  padding-top: 10px;
+}
+
+.history-notes-panel textarea {
+  min-height: 70px;
+  max-height: 140px;
+}
+
+.history-notes-panel .compact-save {
+  height: 32px;
+  font-size: 0.82rem;
+}
+
 .day-tag-list {
+  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
@@ -911,6 +1038,46 @@ button {
   color: var(--muted);
   font-size: 0.78rem;
   line-height: 1.35;
+}
+
+.settings-section {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--field) 82%, transparent);
+}
+
+.settings-section-title {
+  margin: 0 0 4px;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.settings-warning {
+  margin: 0;
+  color: var(--warning);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.checkbox-field {
+  display: flex;
+  width: max-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 9px;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.checkbox-field input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--accent);
 }
 
 .settings-message,

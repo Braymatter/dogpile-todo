@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { TodoItem } from '$lib/types';
+  import HistoryTodoRow from './HistoryTodoRow.svelte';
 
   export let day: {
     key: string;
@@ -11,7 +12,9 @@
   export let activeFilterTags: string[] = [];
 
   const dispatch = createEventDispatcher<{
+    markIncomplete: { id: string };
     toggleTagFilter: { tag: string };
+    updateTodo: { id: string; updates: Partial<TodoItem> };
   }>();
 
   $: title = new Intl.DateTimeFormat(undefined, {
@@ -19,7 +22,6 @@
     month: 'short',
     day: 'numeric'
   }).format(day.date);
-  $: activeFilterTagSet = new Set(activeFilterTags.map((tag) => tag.toLowerCase()));
 
   function formatDuration(minutes: number | undefined) {
     if (!minutes) return '0m';
@@ -30,10 +32,6 @@
     if (hours && remainder) return `${hours}h ${remainder}m`;
     if (hours) return `${hours}h`;
     return `${remainder}m`;
-  }
-
-  function isFilterTagActive(tag: string) {
-    return activeFilterTagSet.has(tag.toLowerCase());
   }
 </script>
 
@@ -47,26 +45,13 @@
     <ul>
       {#each day.todos as todo (todo.id)}
         <li>
-          <div>
-            <strong>{todo.title}</strong>
-            {#if todo.tags.length}
-              <div class="day-tag-list" aria-label="Tags">
-                {#each todo.tags as tag}
-                  <button
-                    class:active={isFilterTagActive(tag)}
-                    class="tag-chip filter-tag"
-                    aria-pressed={isFilterTagActive(tag)}
-                    title={isFilterTagActive(tag) ? 'Remove tag from filter' : 'Add tag to filter'}
-                    type="button"
-                    on:click={() => dispatch('toggleTagFilter', { tag })}
-                  >
-                    {tag}
-                  </button>
-                {/each}
-              </div>
-            {/if}
-          </div>
-          <span>{formatDuration(todo.durationMinutes)}</span>
+          <HistoryTodoRow
+            activeFilterTags={activeFilterTags}
+            {todo}
+            on:markIncomplete={(event) => dispatch('markIncomplete', event.detail)}
+            on:toggleTagFilter={(event) => dispatch('toggleTagFilter', event.detail)}
+            on:updateTodo={(event) => dispatch('updateTodo', event.detail)}
+          />
         </li>
       {/each}
     </ul>

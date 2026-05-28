@@ -52,6 +52,7 @@
     if (status === 'local') return 'Local';
     if (status === 'pending') return 'Queued';
     if (status === 'syncing') return 'Syncing';
+    if (status === 'compacting') return 'Compacting';
     if (status === 'loading') return 'Loading';
     if (status === 'synced') return 'Synced';
     if (status === 'conflict') return 'Merging';

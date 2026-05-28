@@ -14,7 +14,15 @@ import type { TodoStore } from '$lib/persistence/TodoStore';
 import type { TodoItem } from '$lib/types';
 
 export type SyncState = {
-  status: 'local' | 'loading' | 'pending' | 'syncing' | 'synced' | 'conflict' | 'error';
+  status:
+    | 'local'
+    | 'loading'
+    | 'pending'
+    | 'syncing'
+    | 'compacting'
+    | 'synced'
+    | 'conflict'
+    | 'error';
   message: string;
   lastSyncedAt?: string;
 };
@@ -37,6 +45,7 @@ let currentTodos: TodoItem[] = [];
 let githubSaveTimer: ReturnType<typeof setTimeout> | null = null;
 let githubSaveInFlight = false;
 let saveAgainAfterFlight = false;
+let githubCompactionInFlight = false;
 let githubPollTimer: ReturnType<typeof setTimeout> | null = null;
 let githubPollInFlightFor: GitHubTodoStore | null = null;
 let githubPollingEventsBound = false;
@@ -76,6 +85,10 @@ export async function updatePersistenceSettings(settings: PersistenceSettings) {
 export async function syncTodosNow() {
   clearGitHubSaveTimer();
   await saveGitHubTodos(currentTodos);
+}
+
+export async function compactGitHubHistoryNow() {
+  await compactGitHubHistory(githubPersistence, 'manual');
 }
 
 export function addTodo(input: { title: string; notes?: string; tags?: string[] }) {
@@ -283,6 +296,11 @@ async function saveGitHubTodos(todos: TodoItem[]) {
     return;
   }
 
+  if (githubCompactionInFlight) {
+    saveAgainAfterFlight = true;
+    return;
+  }
+
   githubSaveInFlight = true;
   syncState.set({ status: 'syncing', message: 'Saving to GitHub' });
 
@@ -292,6 +310,7 @@ async function saveGitHubTodos(todos: TodoItem[]) {
     if (githubPersistence !== savingStore) return;
 
     markSynced(savedTodos);
+    queueGitHubAutoCompaction(savingStore);
   } catch (error) {
     if (githubPersistence !== savingStore) return;
 
@@ -331,6 +350,75 @@ async function mergeGitHubConflict(localTodos: TodoItem[], mergingStore = github
   if (githubPersistence !== mergingStore) return;
 
   markSynced(currentTodos, 'Merged and synced with GitHub');
+  queueGitHubAutoCompaction(mergingStore);
+}
+
+async function compactGitHubHistory(
+  compactingStore: GitHubTodoStore | null,
+  mode: 'manual' | 'auto'
+) {
+  if (!compactingStore) {
+    syncState.set({ status: 'local', message: 'GitHub sync is not configured.' });
+    return;
+  }
+
+  if (githubCompactionInFlight) return;
+
+  if (githubPollInFlightFor) {
+    syncState.set({ status: 'error', message: 'Wait for the current GitHub check to finish.' });
+    return;
+  }
+
+  githubCompactionInFlight = true;
+  clearGitHubSaveTimer();
+  stopGitHubPolling();
+  syncState.set({ status: 'compacting', message: 'Preparing compact snapshot' });
+
+  try {
+    await waitForGitHubSaveIdle();
+    clearGitHubSaveTimer();
+    if (githubPersistence !== compactingStore) return;
+
+    const remoteTodos = await compactingStore.loadTodos();
+    if (githubPersistence !== compactingStore) return;
+
+    const todosToCompact = compactingStore.remoteFileExists
+      ? mergeTodosById(currentTodos, remoteTodos)
+      : normalizeOrder(currentTodos);
+
+    replaceTodos(todosToCompact);
+    await localPersistence?.saveTodos(currentTodos);
+
+    syncState.set({ status: 'compacting', message: 'Compacting GitHub history' });
+    await compactingStore.compactTodos(currentTodos);
+    if (githubPersistence !== compactingStore) return;
+
+    const compactedTodos = await compactingStore.loadTodos();
+    if (githubPersistence !== compactingStore) return;
+
+    replaceTodos(mergeTodosById(currentTodos, compactedTodos));
+    await localPersistence?.saveTodos(currentTodos);
+    markGitHubCompacted();
+    markSynced(
+      currentTodos,
+      mode === 'auto' ? 'Auto-compacted GitHub history' : 'Compacted GitHub history'
+    );
+  } catch (error) {
+    if (githubPersistence === compactingStore) {
+      syncState.set({ status: 'error', message: describeError(error) });
+    }
+  } finally {
+    githubCompactionInFlight = false;
+
+    if (githubPersistence === compactingStore) {
+      startGitHubPolling();
+    }
+
+    if (saveAgainAfterFlight) {
+      saveAgainAfterFlight = false;
+      scheduleGitHubSave(currentTodos);
+    }
+  }
 }
 
 function startGitHubPolling() {
@@ -481,7 +569,7 @@ function canPollGitHub() {
 }
 
 function hasPendingGitHubSave() {
-  return Boolean(githubSaveTimer || githubSaveInFlight || saveAgainAfterFlight);
+  return Boolean(githubSaveTimer || githubSaveInFlight || saveAgainAfterFlight || githubCompactionInFlight);
 }
 
 function hasUnsyncedLocalChanges() {
@@ -495,6 +583,64 @@ function markSynced(todos: TodoItem[], message = 'Synced with GitHub') {
     message,
     lastSyncedAt: new Date().toISOString()
   });
+}
+
+function queueGitHubAutoCompaction(store: GitHubTodoStore) {
+  if (!browser) return;
+
+  window.setTimeout(() => {
+    void maybeAutoCompactGitHubHistory(store);
+  }, 0);
+}
+
+async function maybeAutoCompactGitHubHistory(store: GitHubTodoStore) {
+  if (githubPersistence !== store || githubCompactionInFlight || hasPendingGitHubSave()) return;
+
+  const settings = loadPersistenceSettings();
+  if (!hasGitHubSettings(settings) || !settings.github.autoCompactWeekly) return;
+
+  const currentWeek = getWeekKey();
+  if (settings.github.lastCompactedWeek === currentWeek) return;
+
+  await compactGitHubHistory(store, 'auto');
+}
+
+function markGitHubCompacted() {
+  const settings = loadPersistenceSettings();
+  if (!hasGitHubSettings(settings)) return;
+
+  const nextSettings = normalizePersistenceSettings({
+    ...settings,
+    github: {
+      ...settings.github,
+      lastCompactedAt: new Date().toISOString(),
+      lastCompactedWeek: getWeekKey()
+    }
+  });
+
+  savePersistenceSettings(nextSettings);
+  persistenceSettings.set(nextSettings);
+}
+
+async function waitForGitHubSaveIdle() {
+  while (githubSaveInFlight) {
+    await delay(50);
+  }
+}
+
+function delay(milliseconds: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+function getWeekKey(date = new Date()) {
+  const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = target.getUTCDay() || 7;
+  target.setUTCDate(target.getUTCDate() + 4 - day);
+
+  const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((target.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7);
+
+  return `${target.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
 }
 
 function getTodosSignature(todos: TodoItem[]) {

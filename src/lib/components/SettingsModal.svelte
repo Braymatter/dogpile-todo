@@ -13,6 +13,7 @@
   export let sync: SyncState;
 
   const dispatch = createEventDispatcher<{
+    compactGitHubHistory: void;
     close: void;
     save: PersistenceSettings;
     syncNow: void;
@@ -24,7 +25,19 @@
   let testFailed = false;
 
   $: normalizedDraft = normalizePersistenceSettings(draft);
+  $: normalizedSettings = normalizePersistenceSettings(settings);
   $: canTestGitHub = hasGitHubSettings(normalizedDraft);
+  $: settingsSaved = JSON.stringify(normalizedDraft) === JSON.stringify(normalizedSettings);
+  $: canCompactGitHub =
+    hasGitHubSettings(normalizedSettings) &&
+    settingsSaved &&
+    !['loading', 'pending', 'syncing', 'compacting'].includes(sync.status);
+  $: lastCompactedAt = normalizedSettings.github.lastCompactedAt
+    ? new Date(normalizedSettings.github.lastCompactedAt).toLocaleString([], {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      })
+    : '';
 
   async function testConnection() {
     testMessage = '';
@@ -51,6 +64,18 @@
 
   function save() {
     dispatch('save', normalizedDraft);
+  }
+
+  function compactGitHubHistory() {
+    if (!canCompactGitHub) return;
+
+    const confirmed = window.confirm(
+      `Compact GitHub sync history for ${normalizedSettings.github.owner}/${normalizedSettings.github.repo}:${normalizedSettings.github.branch}? This force-updates that branch.`
+    );
+
+    if (confirmed) {
+      dispatch('compactGitHubHistory');
+    }
   }
 
   function cloneSettings(value: PersistenceSettings) {
@@ -130,6 +155,38 @@
         <div class="sync-summary">
           <span class:error={sync.status === 'error'}>{sync.message}</span>
         </div>
+
+        <section class="settings-section">
+          <div>
+            <p class="settings-section-title">Sync history</p>
+            <p class="settings-warning">
+              Compaction rewrites the configured GitHub branch to one Dogpile snapshot commit.
+            </p>
+          </div>
+
+          <label class="checkbox-field">
+            <input bind:checked={draft.github.autoCompactWeekly} type="checkbox" />
+            <span>Auto-compact weekly</span>
+          </label>
+
+          {#if lastCompactedAt}
+            <small>Last compacted {lastCompactedAt}</small>
+          {/if}
+
+          {#if !settingsSaved}
+            <small>Save settings before compacting this repo.</small>
+          {/if}
+
+          <button
+            class="secondary-button"
+            disabled={!canCompactGitHub}
+            type="button"
+            on:click={compactGitHubHistory}
+          >
+            <RefreshCw size={16} aria-hidden="true" />
+            {sync.status === 'compacting' ? 'Compacting' : 'Compact now'}
+          </button>
+        </section>
 
         {#if testMessage}
           <p class:error={testFailed} class="settings-message">{testMessage}</p>

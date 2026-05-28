@@ -15,6 +15,28 @@ type GitHubUpdateResponse = {
   };
 };
 
+type GitHubRefResponse = {
+  object?: {
+    sha?: string;
+  };
+};
+
+type GitHubCommitResponse = {
+  sha?: string;
+  tree?: {
+    sha?: string;
+  };
+};
+
+type GitHubTreeResponse = {
+  sha?: string;
+  tree?: Array<{
+    path?: string;
+    sha?: string;
+    type?: string;
+  }>;
+};
+
 export class GitHubApiError extends Error {
   constructor(
     message: string,
@@ -88,6 +110,74 @@ export class GitHubTodoStore implements TodoStore {
     this.remoteFileExists = true;
   }
 
+  async compactTodos(todos: TodoItem[]): Promise<void> {
+    const refResponse = await this.request(gitRefUrl(this.settings));
+    await assertOk(refResponse);
+
+    const ref = (await refResponse.json()) as GitHubRefResponse;
+    const headSha = ref.object?.sha;
+    if (!headSha) {
+      throw new GitHubApiError('GitHub branch ref did not include a commit SHA.', refResponse.status);
+    }
+
+    const headResponse = await this.request(gitCommitUrl(this.settings, headSha));
+    await assertOk(headResponse);
+
+    const head = (await headResponse.json()) as GitHubCommitResponse;
+    const baseTreeSha = head.tree?.sha;
+    if (!baseTreeSha) {
+      throw new GitHubApiError('GitHub branch head did not include a tree SHA.', headResponse.status);
+    }
+
+    const treeResponse = await this.request(gitTreesUrl(this.settings), {
+      method: 'POST',
+      body: JSON.stringify({
+        base_tree: baseTreeSha,
+        tree: [
+          {
+            path: this.settings.path,
+            mode: '100644',
+            type: 'blob',
+            content: serializeTodoDocument(todos)
+          }
+        ]
+      })
+    });
+    await assertOk(treeResponse);
+
+    const tree = (await treeResponse.json()) as GitHubTreeResponse;
+    if (!tree.sha) {
+      throw new GitHubApiError('GitHub did not return a compacted tree SHA.', treeResponse.status);
+    }
+
+    const commitResponse = await this.request(gitCommitsUrl(this.settings), {
+      method: 'POST',
+      body: JSON.stringify({
+        message: `Dogpile compact snapshot: ${new Date().toLocaleString()}`,
+        tree: tree.sha,
+        parents: []
+      })
+    });
+    await assertOk(commitResponse);
+
+    const commit = (await commitResponse.json()) as GitHubCommitResponse;
+    if (!commit.sha) {
+      throw new GitHubApiError('GitHub did not return a compacted commit SHA.', commitResponse.status);
+    }
+
+    const updateRefResponse = await this.request(gitRefUrl(this.settings), {
+      method: 'PATCH',
+      body: JSON.stringify({
+        sha: commit.sha,
+        force: true
+      })
+    });
+    await assertOk(updateRefResponse);
+
+    this.sha = tree.tree?.find((entry) => entry.path === this.settings.path && entry.type === 'blob')?.sha;
+    this.remoteFileExists = true;
+  }
+
   private request(url: string, init: RequestInit = {}) {
     return fetch(url, {
       ...init,
@@ -143,6 +233,35 @@ function contentUrl(settings: GitHubPersistenceSettings, includeRef = true) {
   )}/contents/${path}`;
 
   return includeRef ? `${url}?ref=${encodeURIComponent(settings.branch)}` : url;
+}
+
+function gitRefUrl(settings: GitHubPersistenceSettings) {
+  return `${repoUrl(settings)}/git/refs/${branchRef(settings.branch)}`;
+}
+
+function gitCommitUrl(settings: GitHubPersistenceSettings, sha: string) {
+  return `${repoUrl(settings)}/git/commits/${encodeURIComponent(sha)}`;
+}
+
+function gitCommitsUrl(settings: GitHubPersistenceSettings) {
+  return `${repoUrl(settings)}/git/commits`;
+}
+
+function gitTreesUrl(settings: GitHubPersistenceSettings) {
+  return `${repoUrl(settings)}/git/trees`;
+}
+
+function repoUrl(settings: GitHubPersistenceSettings) {
+  return `https://api.github.com/repos/${encodeURIComponent(settings.owner)}/${encodeURIComponent(
+    settings.repo
+  )}`;
+}
+
+function branchRef(branch: string) {
+  return `heads/${branch
+    .split('/')
+    .map((part) => encodeURIComponent(part))
+    .join('/')}`;
 }
 
 function encodeBase64Utf8(value: string) {

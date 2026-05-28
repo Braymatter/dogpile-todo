@@ -15,7 +15,9 @@
   export let activeFilterTags: string[] = [];
 
   const dispatch = createEventDispatcher<{
+    markIncomplete: { id: string };
     toggleTagFilter: { tag: string };
+    updateTodo: { id: string; updates: Partial<TodoItem> };
   }>();
 
   let railElement: HTMLDivElement;
@@ -114,7 +116,9 @@
         <DayCard
           activeFilterTags={activeFilterTags}
           {day}
+          on:markIncomplete={(event) => dispatch('markIncomplete', event.detail)}
           on:toggleTagFilter={(event) => dispatch('toggleTagFilter', event.detail)}
+          on:updateTodo={(event) => dispatch('updateTodo', event.detail)}
         />
       {/each}
     </div>

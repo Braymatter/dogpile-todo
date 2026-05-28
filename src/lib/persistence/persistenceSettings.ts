@@ -6,6 +6,9 @@ export type GitHubPersistenceSettings = {
   branch: string;
   path: string;
   token: string;
+  autoCompactWeekly: boolean;
+  lastCompactedAt?: string;
+  lastCompactedWeek?: string;
 };
 
 export type PersistenceSettings = {
@@ -22,7 +25,8 @@ export const defaultPersistenceSettings: PersistenceSettings = {
     repo: '',
     branch: 'main',
     path: 'dogpile/todos.json',
-    token: ''
+    token: '',
+    autoCompactWeekly: false
   }
 };
 
@@ -53,7 +57,10 @@ export function normalizePersistenceSettings(value: unknown): PersistenceSetting
       repo: sanitizeText(github.repo),
       branch: sanitizeText(github.branch) || defaultPersistenceSettings.github.branch,
       path: sanitizePath(github.path) || defaultPersistenceSettings.github.path,
-      token: sanitizeText(github.token)
+      token: sanitizeText(github.token),
+      autoCompactWeekly: github.autoCompactWeekly === true,
+      lastCompactedAt: sanitizeOptionalText(github.lastCompactedAt),
+      lastCompactedWeek: sanitizeOptionalText(github.lastCompactedWeek)
     }
   };
 }
@@ -73,6 +80,10 @@ export function hasGitHubSettings(settings: PersistenceSettings) {
 
 function sanitizeText(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function sanitizeOptionalText(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
 
 function sanitizePath(value: unknown) {
