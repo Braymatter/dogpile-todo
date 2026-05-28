@@ -12,14 +12,17 @@
     Undo2,
     X
   } from '@lucide/svelte';
+  import { parseEditableTag } from '$lib/parseEditableTag';
   import type { TodoItem } from '$lib/types';
 
   export let todo: TodoItem;
   export let draggableRow = false;
+  export let activeFilterTags: string[] = [];
 
   const dispatch = createEventDispatcher<{
     deleteTodo: { id: string };
     durationChange: { id: string; durationMinutes?: number };
+    toggleTagFilter: { tag: string };
     toggleComplete: { id: string; completed: boolean };
     updateTodo: { id: string; updates: Partial<TodoItem> };
   }>();
@@ -28,14 +31,17 @@
   let notesExpanded = false;
   let titleDraft = todo.title;
   let notesDraft = todo.notes ?? '';
-  let tagsDraft = todo.tags.join(', ');
+  let tagDraft = '';
+  let tagError = '';
   let durationDraft: string | number = todo.durationMinutes?.toString() ?? '';
   $: notesDirty = notesDraft !== (todo.notes ?? '');
+  $: activeFilterTagSet = new Set(activeFilterTags.map((tag) => tag.toLowerCase()));
 
   $: if (!editing) {
     titleDraft = todo.title;
     notesDraft = todo.notes ?? '';
-    tagsDraft = todo.tags.join(', ');
+    tagDraft = '';
+    tagError = '';
   }
 
   $: if (browser && document.activeElement?.id !== `duration-${todo.id}`) {
@@ -45,15 +51,36 @@
   function saveEdits() {
     if (!titleDraft.trim()) return;
 
+    const updates: Partial<TodoItem> = {
+      title: titleDraft,
+      notes: notesDraft
+    };
+
+    if (tagDraft.trim()) {
+      const tag = parseEditableTag(tagDraft);
+
+      if (!tag) {
+        tagError = 'Tags cannot contain spaces.';
+        return;
+      }
+
+      updates.tags = mergeTags(todo.tags, [tag]);
+    }
+
     dispatch('updateTodo', {
       id: todo.id,
-      updates: {
-        title: titleDraft,
-        notes: notesDraft,
-        tags: parseTags(tagsDraft)
-      }
+      updates
     });
+    tagDraft = '';
+    tagError = '';
     editing = false;
+  }
+
+  function handleTitleKeydown(event: KeyboardEvent) {
+    if (event.key !== 'Enter') return;
+
+    event.preventDefault();
+    saveEdits();
   }
 
   function saveNotes() {
@@ -76,11 +103,66 @@
     });
   }
 
-  function parseTags(value: string) {
-    return value
-      .split(',')
-      .map((tag) => tag.trim())
-      .filter(Boolean);
+  function addTags(value = tagDraft) {
+    const tag = parseEditableTag(value);
+
+    if (!value.trim()) {
+      tagError = '';
+      return;
+    }
+
+    if (!tag) {
+      tagError = 'Tags cannot contain spaces.';
+      return;
+    }
+
+    const nextTags = mergeTags(todo.tags, [tag]);
+    tagDraft = '';
+    tagError = '';
+
+    if (nextTags.length === todo.tags.length) return;
+
+    dispatch('updateTodo', {
+      id: todo.id,
+      updates: { tags: nextTags }
+    });
+  }
+
+  function handleTagKeydown(event: KeyboardEvent) {
+    if (event.key !== 'Enter') return;
+
+    event.preventDefault();
+    addTags((event.currentTarget as HTMLInputElement).value);
+  }
+
+  function removeTag(tag: string) {
+    dispatch('updateTodo', {
+      id: todo.id,
+      updates: {
+        tags: todo.tags.filter((existingTag) => existingTag.toLowerCase() !== tag.toLowerCase())
+      }
+    });
+  }
+
+  function mergeTags(existingTags: string[], addedTags: string[]) {
+    const seenTags = new Set(existingTags.map((tag) => tag.toLowerCase()));
+    const nextTags = [...existingTags];
+
+    for (const tag of addedTags) {
+      const normalizedTag = tag.trim();
+      const key = normalizedTag.toLowerCase();
+
+      if (!normalizedTag || seenTags.has(key)) continue;
+
+      seenTags.add(key);
+      nextTags.push(normalizedTag);
+    }
+
+    return nextTags;
+  }
+
+  function isFilterTagActive(tag: string) {
+    return activeFilterTagSet.has(tag.toLowerCase());
   }
 </script>
 
@@ -110,12 +192,22 @@
       <div class="edit-grid">
         <label>
           <span>Task</span>
-          <input bind:value={titleDraft} type="text" />
+          <input bind:value={titleDraft} type="text" on:keydown={handleTitleKeydown} />
         </label>
-        <label>
-          <span>Tags</span>
-          <input bind:value={tagsDraft} type="text" />
-        </label>
+        <form class="tag-entry" on:submit|preventDefault={() => addTags()}>
+          <label>
+            <span>Add tag</span>
+            <input
+              bind:value={tagDraft}
+              placeholder="tag, Enter to add"
+              type="text"
+              on:keydown={handleTagKeydown}
+            />
+          </label>
+          {#if tagError}
+            <p class="tag-error">{tagError}</p>
+          {/if}
+        </form>
       </div>
     {:else}
       <div class="todo-title-row">
@@ -134,14 +226,30 @@
           </label>
         {/if}
       </div>
+    {/if}
 
-      {#if todo.tags.length}
-        <div class="tag-list" aria-label="Tags">
-          {#each todo.tags as tag}
-            <span>{tag}</span>
-          {/each}
-        </div>
-      {/if}
+    {#if todo.tags.length}
+      <div class:editable-tags={editing} class="tag-list" aria-label="Tags">
+        {#each todo.tags as tag}
+          {#if editing}
+            <button class="tag-chip" type="button" on:click={() => removeTag(tag)}>
+              {tag}
+              <X size={12} aria-hidden="true" />
+            </button>
+          {:else}
+            <button
+              class:active={isFilterTagActive(tag)}
+              class="tag-chip filter-tag"
+              aria-pressed={isFilterTagActive(tag)}
+              title={isFilterTagActive(tag) ? 'Remove tag from filter' : 'Add tag to filter'}
+              type="button"
+              on:click={() => dispatch('toggleTagFilter', { tag })}
+            >
+              {tag}
+            </button>
+          {/if}
+        {/each}
+      </div>
     {/if}
 
     {#if notesExpanded}

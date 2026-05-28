@@ -428,7 +428,8 @@ button {
 }
 
 .quick-add,
-.edit-grid label {
+.edit-grid label,
+.tag-entry {
   display: grid;
   gap: 6px;
 }
@@ -638,7 +639,11 @@ button {
   margin-top: 8px;
 }
 
-.tag-list span {
+.tag-list span,
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 3px 7px;
   border-radius: 999px;
   border: 1px solid rgba(88, 224, 197, 0.16);
@@ -646,6 +651,32 @@ button {
   color: var(--accent-strong);
   font-size: 0.76rem;
   font-weight: 740;
+}
+
+.tag-chip:hover {
+  border-color: var(--line-strong);
+  background: color-mix(in srgb, var(--accent-soft) 75%, var(--surface-soft));
+}
+
+.filter-tag {
+  cursor: pointer;
+}
+
+.filter-tag.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent-soft) 72%, var(--accent) 28%);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px rgba(151, 255, 240, 0.18), 0 0 16px rgba(88, 224, 197, 0.16);
+}
+
+.editable-tags {
+  margin-top: 10px;
+}
+
+.tag-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.82rem;
 }
 
 .duration-field {
@@ -784,11 +815,11 @@ button {
   border-bottom: 1px solid var(--line);
 }
 
-.day-card li p {
-  margin: 3px 0 0;
-  color: var(--muted);
-  font-size: 0.8rem;
-  overflow-wrap: anywhere;
+.day-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
 }
 
 .day-card li > span,

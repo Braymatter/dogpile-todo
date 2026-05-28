@@ -1,6 +1,7 @@
 export type TodoFilterQuery = {
   searchText: string;
   tags: string[];
+  excludedTags: string[];
 };
 
 export type TodoFilterParseResult =

@@ -1,17 +1,19 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { Plus } from '@lucide/svelte';
-  import { parseDashTagInput } from '$lib/parseDashTagInput';
+  import { parseTagInput } from '$lib/parseTagInput';
   import type { TodoItem } from '$lib/types';
   import TodoItemRow from './TodoItemRow.svelte';
 
   export let todos: TodoItem[] = [];
+  export let activeFilterTags: string[] = [];
 
   const dispatch = createEventDispatcher<{
     addTodo: { title: string; notes: string; tags: string[] };
     deleteTodo: { id: string };
     durationChange: { id: string; durationMinutes?: number };
     reorderTodos: { ids: string[] };
+    toggleTagFilter: { tag: string };
     toggleComplete: { id: string; completed: boolean };
     updateTodo: { id: string; updates: Partial<TodoItem> };
   }>();
@@ -28,7 +30,7 @@
   $: openCount = todos.filter((todo) => !todo.completed).length;
 
   function submitTodo(value = quickAdd) {
-    const parsed = parseDashTagInput(value);
+    const parsed = parseTagInput(value);
     if (!parsed.text) return;
 
     dispatch('addTodo', {
@@ -128,10 +130,12 @@
             on:pointerup={handlePointerUp}
           >
             <TodoItemRow
+              activeFilterTags={activeFilterTags}
               {todo}
               draggableRow
               on:deleteTodo={(event) => dispatch('deleteTodo', event.detail)}
               on:durationChange={(event) => dispatch('durationChange', event.detail)}
+              on:toggleTagFilter={(event) => dispatch('toggleTagFilter', event.detail)}
               on:toggleComplete={(event) => dispatch('toggleComplete', event.detail)}
               on:updateTodo={(event) => dispatch('updateTodo', event.detail)}
             />
@@ -150,7 +154,7 @@
       <input
         aria-label="Add task"
         bind:value={quickAdd}
-        placeholder="Task Name -TagA -TagB"
+        placeholder="Task Name --TagA --TagB"
         type="text"
         on:keydown={handleQuickAddKeydown}
       />

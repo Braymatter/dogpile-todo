@@ -22,6 +22,7 @@
   import type { CompletionFilter, HistoryRange, TodoItem } from '$lib/types';
   import { filterTodos } from '$lib/filter/filterTodos';
   import { parseTodoFilter } from '$lib/filter/parseTodoFilter';
+  import { toggleFilterTag } from '$lib/filter/toggleFilterTag';
 
   let filterText = '';
   let completionFilter: CompletionFilter = 'all';
@@ -32,6 +33,7 @@
 
   $: parsedFilter = parseTodoFilter(filterText);
   $: filterError = parsedFilter.ok ? null : parsedFilter.error;
+  $: activeFilterTags = parsedFilter.ok ? parsedFilter.query.tags : [];
 
   function matchesStatus(todo: TodoItem, status: CompletionFilter) {
     if (status === 'completed' && !todo.completed) return false;
@@ -83,6 +85,10 @@
     settingsOpen = false;
   }
 
+  function handleToggleTagFilter(event: CustomEvent<{ tag: string }>) {
+    filterText = toggleFilterTag(filterText, event.detail.tag);
+  }
+
   function sortByOrder(a: TodoItem, b: TodoItem) {
     return a.order - b.order;
   }
@@ -120,16 +126,23 @@
 
   <section class="workspace" aria-label="Dogpile workspace">
     <section class="history-pane" aria-label="Previous completed work">
-      <HistoryView todos={historyTodos} range={historyRange} />
+      <HistoryView
+        activeFilterTags={activeFilterTags}
+        todos={historyTodos}
+        range={historyRange}
+        on:toggleTagFilter={handleToggleTagFilter}
+      />
     </section>
 
     <aside class="daily-pane" aria-label="Today">
       <DailyCard
+        activeFilterTags={activeFilterTags}
         todos={dailyTodos}
         on:addTodo={handleAddTodo}
         on:deleteTodo={(event) => deleteTodo(event.detail.id)}
         on:durationChange={handleDurationChange}
         on:reorderTodos={(event) => reorderVisibleTodos(event.detail.ids)}
+        on:toggleTagFilter={handleToggleTagFilter}
         on:toggleComplete={handleToggleComplete}
         on:updateTodo={(event) => updateTodo(event.detail.id, event.detail.updates)}
       />

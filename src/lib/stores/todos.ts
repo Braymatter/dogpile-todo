@@ -19,6 +19,9 @@ export type SyncState = {
   lastSyncedAt?: string;
 };
 
+const GITHUB_SAVE_DEBOUNCE_MS = 1500;
+const GITHUB_POLL_INTERVAL_MS = 15_000;
+
 export const todoItems = writable<TodoItem[]>([]);
 export const persistenceSettings = writable<PersistenceSettings>(defaultPersistenceSettings);
 export const syncState = writable<SyncState>({
@@ -34,6 +37,10 @@ let currentTodos: TodoItem[] = [];
 let githubSaveTimer: ReturnType<typeof setTimeout> | null = null;
 let githubSaveInFlight = false;
 let saveAgainAfterFlight = false;
+let githubPollTimer: ReturnType<typeof setTimeout> | null = null;
+let githubPollInFlightFor: GitHubTodoStore | null = null;
+let githubPollingEventsBound = false;
+let lastSyncedSignature = '';
 
 todoItems.subscribe((todos) => {
   currentTodos = todos;
@@ -195,7 +202,9 @@ function normalizeOrder(todos: TodoItem[]) {
 
 async function activatePersistence(settings: PersistenceSettings, seedTodos?: TodoItem[]) {
   clearGitHubSaveTimer();
+  stopGitHubPolling();
   githubPersistence = null;
+  lastSyncedSignature = '';
 
   const localTodos = seedTodos ?? (await localPersistence?.loadTodos()) ?? [];
 
@@ -220,15 +229,15 @@ async function activatePersistence(settings: PersistenceSettings, seedTodos?: To
     await localPersistence?.saveTodos(currentTodos);
 
     if (nextGitHubPersistence.remoteFileExists) {
-      syncState.set({
-        status: 'synced',
-        message: 'Synced with GitHub',
-        lastSyncedAt: new Date().toISOString()
-      });
+      markSynced(currentTodos);
+      startGitHubPolling();
       return;
     }
 
     await saveGitHubTodos(currentTodos);
+    if (githubPersistence === nextGitHubPersistence && nextGitHubPersistence.remoteFileExists) {
+      startGitHubPolling();
+    }
   } catch (error) {
     loaded = true;
     replaceTodos(localTodos);
@@ -237,6 +246,10 @@ async function activatePersistence(settings: PersistenceSettings, seedTodos?: To
       status: 'error',
       message: `${describeError(error)} Local cache loaded.`
     });
+
+    if (githubPersistence === nextGitHubPersistence) {
+      startGitHubPolling();
+    }
   }
 }
 
@@ -254,11 +267,13 @@ function scheduleGitHubSave(todos: TodoItem[]) {
 
   githubSaveTimer = setTimeout(() => {
     void saveGitHubTodos(todos);
-  }, 1500);
+  }, GITHUB_SAVE_DEBOUNCE_MS);
 }
 
 async function saveGitHubTodos(todos: TodoItem[]) {
-  if (!githubPersistence) {
+  const savingStore = githubPersistence;
+
+  if (!savingStore) {
     syncState.set({ status: 'local', message: 'Local storage' });
     return;
   }
@@ -272,16 +287,17 @@ async function saveGitHubTodos(todos: TodoItem[]) {
   syncState.set({ status: 'syncing', message: 'Saving to GitHub' });
 
   try {
-    await githubPersistence.saveTodos(normalizeOrder(todos));
-    syncState.set({
-      status: 'synced',
-      message: 'Synced with GitHub',
-      lastSyncedAt: new Date().toISOString()
-    });
+    const savedTodos = normalizeOrder(todos);
+    await savingStore.saveTodos(savedTodos);
+    if (githubPersistence !== savingStore) return;
+
+    markSynced(savedTodos);
   } catch (error) {
+    if (githubPersistence !== savingStore) return;
+
     if (error instanceof GitHubConflictError) {
       try {
-        await mergeGitHubConflict(todos);
+        await mergeGitHubConflict(todos, savingStore);
       } catch (mergeError) {
         syncState.set({ status: 'error', message: describeError(mergeError) });
       }
@@ -291,29 +307,119 @@ async function saveGitHubTodos(todos: TodoItem[]) {
   } finally {
     githubSaveInFlight = false;
 
-    if (saveAgainAfterFlight) {
-      saveAgainAfterFlight = false;
+    const shouldSaveAgain = saveAgainAfterFlight && githubPersistence === savingStore;
+    saveAgainAfterFlight = false;
+
+    if (shouldSaveAgain) {
       scheduleGitHubSave(currentTodos);
     }
   }
 }
 
-async function mergeGitHubConflict(localTodos: TodoItem[]) {
-  if (!githubPersistence) return;
+async function mergeGitHubConflict(localTodos: TodoItem[], mergingStore = githubPersistence) {
+  if (!mergingStore || githubPersistence !== mergingStore) return;
 
   syncState.set({ status: 'conflict', message: 'Merging remote GitHub changes' });
 
-  const remoteTodos = await githubPersistence.loadTodos();
+  const remoteTodos = await mergingStore.loadTodos();
+  if (githubPersistence !== mergingStore) return;
+
   const mergedTodos = mergeTodosById(localTodos, remoteTodos);
   replaceTodos(mergedTodos);
   await localPersistence?.saveTodos(currentTodos);
-  await githubPersistence.saveTodos(currentTodos);
+  await mergingStore.saveTodos(currentTodos);
+  if (githubPersistence !== mergingStore) return;
 
-  syncState.set({
-    status: 'synced',
-    message: 'Merged and synced with GitHub',
-    lastSyncedAt: new Date().toISOString()
-  });
+  markSynced(currentTodos, 'Merged and synced with GitHub');
+}
+
+function startGitHubPolling() {
+  if (!browser || !githubPersistence) return;
+
+  clearGitHubPollTimer();
+  bindGitHubPollingEvents();
+  scheduleNextGitHubPoll();
+}
+
+function stopGitHubPolling() {
+  clearGitHubPollTimer();
+  unbindGitHubPollingEvents();
+  githubPollInFlightFor = null;
+}
+
+function scheduleNextGitHubPoll(delay = GITHUB_POLL_INTERVAL_MS) {
+  if (!browser || !githubPersistence || githubPollTimer) return;
+
+  githubPollTimer = setTimeout(() => {
+    githubPollTimer = null;
+    void pollGitHubTodos();
+  }, delay);
+}
+
+async function pollGitHubTodos() {
+  const pollingStore = githubPersistence;
+  if (!pollingStore || githubPollInFlightFor) return;
+
+  if (!canPollGitHub()) {
+    scheduleNextGitHubPoll();
+    return;
+  }
+
+  if (hasPendingGitHubSave()) {
+    scheduleNextGitHubPoll();
+    return;
+  }
+
+  githubPollInFlightFor = pollingStore;
+
+  try {
+    const remoteTodos = await pollingStore.loadTodos();
+    if (githubPersistence !== pollingStore) return;
+
+    if (!pollingStore.remoteFileExists) {
+      syncState.set({ status: 'error', message: 'GitHub todo file was not found.' });
+      return;
+    }
+
+    await reconcilePolledTodos(remoteTodos);
+  } catch (error) {
+    if (githubPersistence === pollingStore) {
+      syncState.set({ status: 'error', message: describeError(error) });
+    }
+  } finally {
+    if (githubPollInFlightFor === pollingStore) {
+      githubPollInFlightFor = null;
+      scheduleNextGitHubPoll();
+    }
+  }
+}
+
+async function reconcilePolledTodos(remoteTodos: TodoItem[]) {
+  const remoteSignature = getTodosSignature(remoteTodos);
+
+  if (remoteSignature === lastSyncedSignature) {
+    if (hasUnsyncedLocalChanges()) {
+      await saveGitHubTodos(currentTodos);
+      return;
+    }
+
+    markSynced(currentTodos);
+    return;
+  }
+
+  if (!hasUnsyncedLocalChanges()) {
+    replaceTodos(remoteTodos);
+    await localPersistence?.saveTodos(currentTodos);
+    markSynced(currentTodos, 'Updated from GitHub');
+    return;
+  }
+
+  syncState.set({ status: 'conflict', message: 'Merging remote GitHub changes' });
+
+  const mergedTodos = mergeTodosById(currentTodos, remoteTodos);
+  replaceTodos(mergedTodos);
+  await localPersistence?.saveTodos(currentTodos);
+  await saveGitHubTodos(currentTodos);
 }
 
 function mergeTodosById(localTodos: TodoItem[], remoteTodos: TodoItem[]) {
@@ -340,6 +446,61 @@ function clearGitHubSaveTimer() {
   githubSaveTimer = null;
 }
 
+function clearGitHubPollTimer() {
+  if (!githubPollTimer) return;
+
+  clearTimeout(githubPollTimer);
+  githubPollTimer = null;
+}
+
+function bindGitHubPollingEvents() {
+  if (!browser || githubPollingEventsBound) return;
+
+  document.addEventListener('visibilitychange', pollGitHubWhenAvailable);
+  window.addEventListener('online', pollGitHubWhenAvailable);
+  githubPollingEventsBound = true;
+}
+
+function unbindGitHubPollingEvents() {
+  if (!browser || !githubPollingEventsBound) return;
+
+  document.removeEventListener('visibilitychange', pollGitHubWhenAvailable);
+  window.removeEventListener('online', pollGitHubWhenAvailable);
+  githubPollingEventsBound = false;
+}
+
+function pollGitHubWhenAvailable() {
+  if (!canPollGitHub()) return;
+
+  clearGitHubPollTimer();
+  void pollGitHubTodos();
+}
+
+function canPollGitHub() {
+  return !document.hidden && navigator.onLine;
+}
+
+function hasPendingGitHubSave() {
+  return Boolean(githubSaveTimer || githubSaveInFlight || saveAgainAfterFlight);
+}
+
+function hasUnsyncedLocalChanges() {
+  return hasPendingGitHubSave() || getTodosSignature(currentTodos) !== lastSyncedSignature;
+}
+
+function markSynced(todos: TodoItem[], message = 'Synced with GitHub') {
+  lastSyncedSignature = getTodosSignature(todos);
+  syncState.set({
+    status: 'synced',
+    message,
+    lastSyncedAt: new Date().toISOString()
+  });
+}
+
+function getTodosSignature(todos: TodoItem[]) {
+  return JSON.stringify(normalizeOrder(todos));
+}
+
 function describeError(error: unknown) {
   return error instanceof Error ? error.message : 'GitHub sync failed.';
 }
@@ -350,7 +511,7 @@ function normalizeTags(tags: string[]) {
       tags
         .flatMap((tag) => tag.split(','))
         .map((tag) => tag.trim())
-        .filter(Boolean)
+        .filter((tag) => tag && !/\s/.test(tag))
     )
   );
 }

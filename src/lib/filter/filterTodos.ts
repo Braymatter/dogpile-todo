@@ -3,7 +3,9 @@ import type { TodoItem } from '$lib/types';
 import type { TodoFilterQuery } from './filterTypes';
 
 export function filterTodos(todos: TodoItem[], query: TodoFilterQuery) {
-  const tagFilteredTodos = todos.filter((todo) => hasTags(todo, query.tags));
+  const tagFilteredTodos = todos.filter((todo) =>
+    matchesTags(todo, query.tags, query.excludedTags)
+  );
 
   if (!query.searchText) {
     return tagFilteredTodos;
@@ -23,9 +25,11 @@ export function filterTodos(todos: TodoItem[], query: TodoFilterQuery) {
   return tagFilteredTodos.filter((todo) => matchingIds.has(todo.id));
 }
 
-function hasTags(todo: TodoItem, requiredTags: string[]) {
-  if (requiredTags.length === 0) return true;
-
+function matchesTags(todo: TodoItem, requiredTags: string[], excludedTags: string[]) {
   const tags = new Set(todo.tags.map((tag) => tag.toLowerCase()));
-  return requiredTags.every((tag) => tags.has(tag.toLowerCase()));
+
+  return (
+    requiredTags.every((tag) => tags.has(tag.toLowerCase())) &&
+    excludedTags.every((tag) => !tags.has(tag.toLowerCase()))
+  );
 }

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { createEventDispatcher, onMount, tick } from 'svelte';
   import type { HistoryRange, TodoItem } from '$lib/types';
   import DayCard from './DayCard.svelte';
 
@@ -12,6 +12,11 @@
 
   export let todos: TodoItem[] = [];
   export let range: HistoryRange = 7;
+  export let activeFilterTags: string[] = [];
+
+  const dispatch = createEventDispatcher<{
+    toggleTagFilter: { tag: string };
+  }>();
 
   let railElement: HTMLDivElement;
 
@@ -106,7 +111,11 @@
   {#each columns as column (column.key)}
     <div class="history-column">
       {#each column.days as day (day.key)}
-        <DayCard {day} />
+        <DayCard
+          activeFilterTags={activeFilterTags}
+          {day}
+          on:toggleTagFilter={(event) => dispatch('toggleTagFilter', event.detail)}
+        />
       {/each}
     </div>
   {/each}

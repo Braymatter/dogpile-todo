@@ -71,7 +71,7 @@
       <input
         bind:value={filterText}
         aria-invalid={Boolean(filterError)}
-        placeholder="fuzzy search -tag"
+        placeholder="fuzzy search --tag !tag"
         type="text"
       />
     </label>

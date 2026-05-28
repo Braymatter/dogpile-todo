@@ -14,25 +14,26 @@ const baseTodo: TodoItem = {
 };
 
 describe('todo filter parsing', () => {
-  it('parses free text separately from hyphen tags', () => {
-    const parsed = parseTodoFilter('launch checklist -TagA -TagC');
+  it('parses free text separately from double-dash tags', () => {
+    const parsed = parseTodoFilter('launch checklist --TagA --TagC');
 
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
 
     expect(parsed.query).toEqual({
       searchText: 'launch checklist',
-      tags: ['taga', 'tagc']
+      tags: ['taga', 'tagc'],
+      excludedTags: []
     });
   });
 
-  it('only filters tags when terms are hyphen-prefixed', () => {
-    const parsed = parseTodoFilter('TagA');
+  it('only filters tags when terms are double-dash-prefixed', () => {
+    const parsed = parseTodoFilter('TagA -TagA');
 
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
 
-    expect(parsed.query.searchText).toBe('TagA');
+    expect(parsed.query.searchText).toBe('TagA -TagA');
     expect(parsed.query.tags).toEqual([]);
   });
 
@@ -56,11 +57,28 @@ describe('todo filter parsing', () => {
   });
 
   it('matches explicit tags case-insensitively', () => {
-    const parsed = parseTodoFilter('-taga');
+    const parsed = parseTodoFilter('--taga');
 
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
 
     expect(filterTodos([baseTodo], parsed.query)).toEqual([baseTodo]);
+  });
+
+  it('excludes explicit tags case-insensitively', () => {
+    const parsed = parseTodoFilter('--taga !Personal');
+    const todos = [
+      baseTodo,
+      {
+        ...baseTodo,
+        id: '2',
+        tags: ['TagA', 'Personal']
+      }
+    ];
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    expect(filterTodos(todos, parsed.query)).toEqual([baseTodo]);
   });
 });
