@@ -7,6 +7,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "build:pages": "BASE_PATH=/dogpile-todo PAGES_OUTPUT=docs vite build && node scripts/restore-pages-metadata.mjs",
+    "deploy": "npm run check && npm test && npm run build:pages",
     "preview": "vite preview --host 127.0.0.1",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run"
