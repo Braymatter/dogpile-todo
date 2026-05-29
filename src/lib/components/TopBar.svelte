@@ -62,7 +62,6 @@
 
 <header class="top-bar">
   <div class="brand">
-    <p class="eyebrow">Prioritized work</p>
     <h1>Dogpile</h1>
   </div>
 

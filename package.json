@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@fontsource-variable/tektur": "^5.2.7",
     "@lucide/svelte": "^1.16.0",
     "fuse.js": "^7.3.0"
   },
