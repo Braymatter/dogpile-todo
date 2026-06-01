@@ -56,8 +56,71 @@ describe('todo filter parsing', () => {
     expect(filterTodos(todos, parsed.query).map((todo) => todo.id)).toEqual(['2']);
   });
 
+  it('treats pipe-delimited search text as OR alternatives', () => {
+    const todos: TodoItem[] = [
+      baseTodo,
+      {
+        ...baseTodo,
+        id: '2',
+        title: 'Review dashboard polish',
+        tags: ['Design']
+      },
+      {
+        ...baseTodo,
+        id: '3',
+        title: 'Draft release notes',
+        notes: 'Summarize shipped sync work.',
+        tags: ['Writing']
+      }
+    ];
+    const parsed = parseTodoFilter('dashbord | release');
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    expect(filterTodos(todos, parsed.query).map((todo) => todo.id)).toEqual(['2', '3']);
+  });
+
+  it('applies tag filters across pipe-delimited search alternatives', () => {
+    const todos: TodoItem[] = [
+      {
+        ...baseTodo,
+        id: '1',
+        title: 'Review dashboard polish',
+        tags: ['Design']
+      },
+      {
+        ...baseTodo,
+        id: '2',
+        title: 'Draft release notes',
+        tags: ['Writing']
+      },
+      {
+        ...baseTodo,
+        id: '3',
+        title: 'Run release checklist',
+        tags: ['Design']
+      }
+    ];
+    const parsed = parseTodoFilter('dashbord | release --Design');
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    expect(filterTodos(todos, parsed.query).map((todo) => todo.id)).toEqual(['1', '3']);
+  });
+
   it('matches explicit tags case-insensitively', () => {
     const parsed = parseTodoFilter('--taga');
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    expect(filterTodos([baseTodo], parsed.query)).toEqual([baseTodo]);
+  });
+
+  it('matches em dash explicit tags case-insensitively', () => {
+    const parsed = parseTodoFilter('\u2014taga');
 
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;

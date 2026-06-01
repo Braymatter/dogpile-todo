@@ -1,3 +1,5 @@
+import { parseRequiredTagToken } from '$lib/tagSyntax';
+
 export function toggleFilterTag(filterText: string, tag: string) {
   const normalizedTag = tag.trim();
   if (!normalizedTag || /\s/.test(normalizedTag)) return filterText;
@@ -15,7 +17,7 @@ export function toggleFilterTag(filterText: string, tag: string) {
 }
 
 function matchesRequiredTag(token: string, tagKey: string) {
-  return token.startsWith('--') && token.slice(2).toLowerCase() === tagKey;
+  return parseRequiredTagToken(token)?.toLowerCase() === tagKey;
 }
 
 function matchesExcludedTag(token: string, tagKey: string) {

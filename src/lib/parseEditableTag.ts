@@ -1,6 +1,8 @@
+import { stripOptionalRequiredTagPrefix } from '$lib/tagSyntax';
+
 export function parseEditableTag(value: string) {
   const trimmed = value.trim();
-  const tag = trimmed.startsWith('--') ? trimmed.slice(2) : trimmed;
+  const tag = stripOptionalRequiredTagPrefix(trimmed);
 
   return tag && !/\s/.test(tag) ? tag : null;
 }

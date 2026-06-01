@@ -7,7 +7,9 @@ export function filterTodos(todos: TodoItem[], query: TodoFilterQuery) {
     matchesTags(todo, query.tags, query.excludedTags)
   );
 
-  if (!query.searchText) {
+  const searchAlternatives = getSearchAlternatives(query.searchText);
+
+  if (searchAlternatives.length === 0) {
     return tagFilteredTodos;
   }
 
@@ -20,9 +22,20 @@ export function filterTodos(todos: TodoItem[], query: TodoFilterQuery) {
     ],
     threshold: 0.36
   });
-  const matchingIds = new Set(fuse.search(query.searchText).map((result) => result.item.id));
+  const matchingIds = new Set(
+    searchAlternatives.flatMap((searchText) =>
+      fuse.search(searchText).map((result) => result.item.id)
+    )
+  );
 
   return tagFilteredTodos.filter((todo) => matchingIds.has(todo.id));
+}
+
+function getSearchAlternatives(searchText: string) {
+  return searchText
+    .split('|')
+    .map((alternative) => alternative.trim())
+    .filter(Boolean);
 }
 
 function matchesTags(todo: TodoItem, requiredTags: string[], excludedTags: string[]) {

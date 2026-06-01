@@ -1,11 +1,15 @@
+import { parseRequiredTagToken } from '$lib/tagSyntax';
+
 export function parseTagInput(value: string, options: { allowExcludedTags?: boolean } = {}) {
   const textParts: string[] = [];
   const tags: string[] = [];
   const excludedTags: string[] = [];
 
   for (const part of value.trim().split(/\s+/).filter(Boolean)) {
-    if (part.startsWith('--') && part.length > 2) {
-      tags.push(part.slice(2));
+    const requiredTag = parseRequiredTagToken(part);
+
+    if (requiredTag) {
+      tags.push(requiredTag);
     } else if (options.allowExcludedTags && part.startsWith('!') && part.length > 1) {
       excludedTags.push(part.slice(1));
     } else {
