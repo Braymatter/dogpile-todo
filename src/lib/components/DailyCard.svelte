@@ -21,6 +21,7 @@
   let quickAdd = '';
   let draggedId: string | null = null;
   let dropIndex: number | null = null;
+  let hideCompleted = false;
   let listElement: HTMLDivElement;
 
   $: todayTitle = new Intl.DateTimeFormat(undefined, {
@@ -28,6 +29,11 @@
     day: 'numeric'
   }).format(new Date());
   $: openCount = todos.filter((todo) => !todo.completed).length;
+  $: completedCount = todos.filter((todo) => todo.completed).length;
+  $: visibleTodos = hideCompleted ? todos.filter((todo) => !todo.completed) : todos;
+  $: if (dropIndex !== null && dropIndex > visibleTodos.length) {
+    dropIndex = visibleTodos.length;
+  }
 
   function submitTodo(value = quickAdd) {
     const parsed = parseTagInput(value);
@@ -55,7 +61,7 @@
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     event.preventDefault();
     draggedId = id;
-    dropIndex = todos.findIndex((todo) => todo.id === id);
+    dropIndex = visibleTodos.findIndex((todo) => todo.id === id);
   }
 
   function handlePointerMove(event: PointerEvent) {
@@ -87,7 +93,7 @@
   function dropAtCurrentIndex() {
     if (!draggedId || dropIndex === null) return;
 
-    const ids = todos.map((todo) => todo.id);
+    const ids = visibleTodos.map((todo) => todo.id);
     const fromIndex = ids.indexOf(draggedId);
     if (fromIndex === -1) return;
 
@@ -110,13 +116,31 @@
       <p class="eyebrow">Daily</p>
       <h2>{todayTitle}</h2>
     </div>
-    <span class="count-pill">{openCount} open</span>
+    <div class="daily-heading-actions">
+      {#if hideCompleted}
+        <span class="completed-count-badge" aria-label={`${completedCount} completed tasks hidden`}>
+          {completedCount}
+        </span>
+      {/if}
+      <label class:active={hideCompleted} class="completed-toggle">
+        <input
+          bind:checked={hideCompleted}
+          aria-label="Hide completed tasks in daily card"
+          type="checkbox"
+        />
+        <span class="toggle-track" aria-hidden="true">
+          <span class="toggle-knob"></span>
+        </span>
+        <span>Hide completed</span>
+      </label>
+      <span class="count-pill">{openCount} open</span>
+    </div>
   </div>
 
   <section class="daily-list-shell" aria-label="Daily tasks">
-    {#if todos.length}
+    {#if visibleTodos.length}
       <div bind:this={listElement} class="task-list daily-task-list" role="list">
-        {#each todos as todo, index (todo.id)}
+        {#each visibleTodos as todo, index (todo.id)}
           {#if dropIndex === index && draggedId !== todo.id}
             <div class="drop-indicator" role="presentation"></div>
           {/if}
@@ -141,10 +165,12 @@
             />
           </div>
         {/each}
-        {#if dropIndex === todos.length}
+        {#if dropIndex === visibleTodos.length}
           <div class="drop-indicator" role="presentation"></div>
         {/if}
       </div>
+    {:else if hideCompleted && completedCount}
+      <p class="empty-state page-empty">Completed tasks are hidden.</p>
     {:else}
       <p class="empty-state page-empty">No tasks match this view.</p>
     {/if}

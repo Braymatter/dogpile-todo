@@ -613,6 +613,7 @@ button {
 .card-heading,
 .history-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -640,6 +641,126 @@ button {
   font-size: 0.82rem;
   font-weight: 800;
   animation: soft-pulse 7.2s ease-in-out infinite;
+}
+
+.daily-heading-actions {
+  display: flex;
+  flex: 1 1 280px;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.completed-toggle {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  height: 34px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 0 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--field);
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--font-terminal);
+  font-size: 0.74rem;
+  font-weight: 850;
+  text-transform: uppercase;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    color 150ms ease;
+}
+
+.completed-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggle-track {
+  position: relative;
+  display: inline-flex;
+  width: 34px;
+  height: 18px;
+  flex: 0 0 auto;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-soft) 72%, transparent);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.2);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.toggle-knob {
+  position: absolute;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--muted);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.24);
+  transition:
+    background-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.completed-toggle:hover {
+  border-color: var(--line-strong);
+  background: color-mix(in srgb, var(--surface-soft) 76%, transparent);
+  color: var(--text);
+  box-shadow: 0 0 18px rgba(88, 224, 197, 0.12);
+}
+
+.completed-toggle.active {
+  border-color: var(--line-strong);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.completed-toggle.active .toggle-track {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: 0 0 14px rgba(88, 224, 197, 0.2);
+}
+
+.completed-toggle.active .toggle-knob {
+  background: #06110f;
+  box-shadow: 0 0 10px rgba(151, 255, 240, 0.35);
+  transform: translateX(16px);
+}
+
+.completed-toggle input:focus-visible + .toggle-track {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 3px;
+}
+
+.completed-count-badge {
+  display: inline-grid;
+  min-width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--secondary) 52%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--secondary) 18%, var(--surface-soft));
+  color: var(--accent-strong);
+  font-family: var(--font-terminal);
+  font-size: 0.8rem;
+  font-weight: 850;
+  box-shadow: 0 0 16px color-mix(in srgb, var(--secondary) 18%, transparent);
 }
 
 .quick-add,
@@ -1564,6 +1685,11 @@ button {
   .top-bar,
   .daily-card {
     padding: 14px;
+  }
+
+  .daily-heading-actions {
+    flex-basis: 100%;
+    justify-content: flex-start;
   }
 
   .brand h1 {
