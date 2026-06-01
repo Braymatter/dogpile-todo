@@ -311,6 +311,8 @@ button {
 }
 
 .top-bar {
+  position: relative;
+  z-index: 8;
   display: grid;
   grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
   gap: 18px;
@@ -386,6 +388,7 @@ button {
 }
 
 .field > span,
+.field > label,
 .edit-grid span,
 .duration-field span,
 .history-edit-field > span {
@@ -395,6 +398,75 @@ button {
   font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
+}
+
+.filter-field {
+  position: relative;
+}
+
+.filter-input-wrap {
+  position: relative;
+}
+
+.filter-suggestions {
+  position: absolute;
+  top: calc(100% + 7px);
+  right: 0;
+  left: 0;
+  z-index: 12;
+  display: grid;
+  max-height: min(260px, 54vh);
+  gap: 4px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(88, 224, 197, 0.08), transparent 120%),
+    color-mix(in srgb, var(--surface) 94%, #000000);
+  box-shadow: var(--shadow), 0 0 34px rgba(88, 224, 197, 0.18);
+  backdrop-filter: blur(18px);
+}
+
+.filter-suggestion {
+  display: flex;
+  width: 100%;
+  min-height: 34px;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    color 150ms ease;
+}
+
+.filter-suggestion:hover,
+.filter-suggestion.active {
+  border-color: var(--line-strong);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  box-shadow: inset 0 0 0 1px rgba(151, 255, 240, 0.1), 0 0 16px rgba(88, 224, 197, 0.12);
+}
+
+.filter-suggestion-token {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-terminal);
+  font-size: 0.88rem;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-suggestion-token span {
+  color: var(--secondary);
 }
 
 .filter-error {

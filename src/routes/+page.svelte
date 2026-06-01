@@ -22,6 +22,7 @@
   } from '$lib/stores/todos';
   import type { PersistenceSettings } from '$lib/persistence/persistenceSettings';
   import type { CompletionFilter, HistoryRange, TodoItem } from '$lib/types';
+  import { getUniqueSortedTags } from '$lib/filter/filterTagAutocomplete';
   import { filterTodos } from '$lib/filter/filterTodos';
   import { parseTodoFilter } from '$lib/filter/parseTodoFilter';
   import { toggleFilterTag } from '$lib/filter/toggleFilterTag';
@@ -39,6 +40,7 @@
   $: parsedFilter = parseTodoFilter(filterText);
   $: filterError = parsedFilter.ok ? null : parsedFilter.error;
   $: activeFilterTags = parsedFilter.ok ? parsedFilter.query.tags : [];
+  $: availableFilterTags = getUniqueSortedTags($todoItems.flatMap((todo) => todo.tags));
 
   function matchesStatus(todo: TodoItem, status: CompletionFilter) {
     if (status === 'completed' && !todo.completed) return false;
@@ -133,6 +135,7 @@
     bind:completionFilter
     bind:historyRange
     {filterError}
+    availableTags={availableFilterTags}
     sync={$syncState}
     on:openSettings={() => (settingsOpen = true)}
     on:syncNow={syncTodosNow}
