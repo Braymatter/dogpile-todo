@@ -3,6 +3,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { Plus } from '@lucide/svelte';
   import { parseTagInput } from '$lib/parseTagInput';
+  import { getQuickAddPlaceholder, mergeQuickAddTags } from '$lib/quickAddTags';
   import type { TodoItem } from '$lib/types';
   import TodoItemRow from './TodoItemRow.svelte';
 
@@ -34,6 +35,7 @@
   $: openCount = todos.filter((todo) => !todo.completed).length;
   $: completedCount = todos.filter((todo) => todo.completed).length;
   $: visibleTodos = hideCompleted ? todos.filter((todo) => !todo.completed) : todos;
+  $: quickAddPlaceholder = getQuickAddPlaceholder(activeFilterTags);
   $: if (dropIndex !== null && dropIndex > visibleTodos.length) {
     dropIndex = visibleTodos.length;
   }
@@ -74,7 +76,7 @@
     dispatch('addTodo', {
       title: parsed.text,
       notes: '',
-      tags: parsed.tags
+      tags: mergeQuickAddTags(parsed.tags, activeFilterTags)
     });
 
     quickAdd = '';
@@ -213,7 +215,7 @@
       <input
         aria-label="Add task"
         bind:value={quickAdd}
-        placeholder="Task Name --TagA --TagB"
+        placeholder={quickAddPlaceholder}
         type="text"
         on:keydown={handleQuickAddKeydown}
       />
