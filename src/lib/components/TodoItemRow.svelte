@@ -221,7 +221,25 @@
       </div>
     {:else}
       <div class="todo-title-row">
-        <strong>{todo.title}</strong>
+        <div class="todo-title-line">
+          <strong>{todo.title}</strong>
+          {#if todo.tags.length}
+            <div class="tag-list inline-tag-list" aria-label="Tags">
+              {#each todo.tags as tag}
+                <button
+                  class:active={isFilterTagActive(tag)}
+                  class="tag-chip filter-tag"
+                  aria-pressed={isFilterTagActive(tag)}
+                  title={isFilterTagActive(tag) ? 'Remove tag from filter' : 'Add tag to filter'}
+                  type="button"
+                  on:click={() => dispatch('toggleTagFilter', { tag })}
+                >
+                  {tag}
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
         {#if todo.completed}
           <label class="duration-field">
             <span>min</span>
@@ -301,26 +319,13 @@
     <p class="todo-note-preview todo-row-wide">{todo.notes}</p>
   {/if}
 
-  {#if todo.tags.length}
+  {#if editing && todo.tags.length}
     <div class:editable-tags={editing} class="tag-list todo-row-wide" aria-label="Tags">
       {#each todo.tags as tag}
-        {#if editing}
-          <button class="tag-chip" type="button" on:click={() => removeTag(tag)}>
-            {tag}
-            <X size={12} aria-hidden="true" />
-          </button>
-        {:else}
-          <button
-            class:active={isFilterTagActive(tag)}
-            class="tag-chip filter-tag"
-            aria-pressed={isFilterTagActive(tag)}
-            title={isFilterTagActive(tag) ? 'Remove tag from filter' : 'Add tag to filter'}
-            type="button"
-            on:click={() => dispatch('toggleTagFilter', { tag })}
-          >
-            {tag}
-          </button>
-        {/if}
+        <button class="tag-chip" type="button" on:click={() => removeTag(tag)}>
+          {tag}
+          <X size={12} aria-hidden="true" />
+        </button>
       {/each}
     </div>
   {/if}

@@ -919,7 +919,7 @@ button {
 
 .task-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .daily-list-shell {
@@ -981,10 +981,10 @@ button {
 .todo-row {
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr) auto;
-  gap: 12px;
+  gap: 10px;
   align-items: start;
-  min-height: 68px;
-  padding: 14px;
+  min-height: 58px;
+  padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background:
@@ -1045,9 +1045,26 @@ button {
 
 .todo-title-row {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: start;
   justify-content: space-between;
+}
+
+.todo-title-line,
+.history-title-line {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 4px 7px;
+  align-items: center;
+}
+
+.todo-title-line strong,
+.history-title-line strong {
+  min-width: 0;
+  max-width: 100%;
+  flex: 0 1 auto;
 }
 
 .todo-title-row strong,
@@ -1127,8 +1144,12 @@ button {
 .tag-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.inline-tag-list {
+  margin-top: 0;
 }
 
 .tag-list span,
@@ -1136,7 +1157,7 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 7px;
+  padding: 2px 6px;
   border-radius: 999px;
   border: 1px solid rgba(88, 224, 197, 0.16);
   background: var(--accent-soft);
@@ -1361,7 +1382,7 @@ button {
 .day-card ul {
   display: grid;
   align-content: start;
-  gap: 10px;
+  gap: 8px;
   min-height: 0;
   overflow-y: auto;
   margin: 0;
@@ -1372,14 +1393,14 @@ button {
 
 .day-card li {
   min-width: 0;
-  padding-bottom: 10px;
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--line);
 }
 
 .history-todo-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
+  gap: 6px;
   align-items: start;
 }
 
@@ -1505,7 +1526,13 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-  margin-top: 6px;
+  margin-top: 5px;
+}
+
+.history-inline-tags {
+  grid-column: auto;
+  gap: 4px;
+  margin-top: 0;
 }
 
 .day-card li > span,

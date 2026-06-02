@@ -198,7 +198,25 @@
     </div>
   {:else}
     <div class="history-todo-main">
-      <strong>{todo.title}</strong>
+      <div class="history-title-line">
+        <strong>{todo.title}</strong>
+        {#if todo.tags.length}
+          <div class="day-tag-list history-inline-tags" aria-label="Tags">
+            {#each todo.tags as tag}
+              <button
+                class:active={isFilterTagActive(tag)}
+                class="tag-chip filter-tag"
+                aria-pressed={isFilterTagActive(tag)}
+                title={isFilterTagActive(tag) ? 'Remove tag from filter' : 'Add tag to filter'}
+                type="button"
+                on:click={() => dispatch('toggleTagFilter', { tag })}
+              >
+                {tag}
+              </button>
+            {/each}
+          </div>
+        {/if}
+      </div>
     </div>
   {/if}
 
@@ -258,26 +276,13 @@
     <p class="history-note-preview">{todo.notes}</p>
   {/if}
 
-  {#if todo.tags.length}
-    <div class:editable-tags={editing} class="day-tag-list" aria-label="Tags">
+  {#if editing && todo.tags.length}
+    <div class="day-tag-list editable-tags" aria-label="Tags">
       {#each todo.tags as tag}
-        {#if editing}
-          <button class="tag-chip" type="button" on:click={() => removeTag(tag)}>
-            {tag}
-            <X size={12} aria-hidden="true" />
-          </button>
-        {:else}
-          <button
-            class:active={isFilterTagActive(tag)}
-            class="tag-chip filter-tag"
-            aria-pressed={isFilterTagActive(tag)}
-            title={isFilterTagActive(tag) ? 'Remove tag from filter' : 'Add tag to filter'}
-            type="button"
-            on:click={() => dispatch('toggleTagFilter', { tag })}
-          >
-            {tag}
-          </button>
-        {/if}
+        <button class="tag-chip" type="button" on:click={() => removeTag(tag)}>
+          {tag}
+          <X size={12} aria-hidden="true" />
+        </button>
       {/each}
     </div>
   {/if}
