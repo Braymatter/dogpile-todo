@@ -1,7 +1,9 @@
 name: Deploy to GitHub Pages
 
 on:
-  workflow_dispatch:
+  push:
+    tags:
+      - '*'
 
 permissions:
   contents: read
@@ -18,6 +20,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag is on main
+        run: |
+          TAG_COMMIT="$(git rev-list -n 1 "$GITHUB_REF")"
+          git fetch --no-tags --prune origin +refs/heads/main:refs/remotes/origin/main
+
+          if ! git merge-base --is-ancestor "$TAG_COMMIT" refs/remotes/origin/main; then
+            echo "::error::Tag $GITHUB_REF_NAME points to $TAG_COMMIT, which is not on main."
+            exit 1
+          fi
 
       - name: Setup Node
         uses: actions/setup-node@v4
