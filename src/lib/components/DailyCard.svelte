@@ -1,9 +1,12 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { browser } from '$app/environment';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { Plus } from '@lucide/svelte';
   import { parseTagInput } from '$lib/parseTagInput';
   import type { TodoItem } from '$lib/types';
   import TodoItemRow from './TodoItemRow.svelte';
+
+  const HIDE_COMPLETED_STORAGE_KEY = 'dogpile.daily.hideCompleted.v1';
 
   export let todos: TodoItem[] = [];
   export let activeFilterTags: string[] = [];
@@ -33,6 +36,35 @@
   $: visibleTodos = hideCompleted ? todos.filter((todo) => !todo.completed) : todos;
   $: if (dropIndex !== null && dropIndex > visibleTodos.length) {
     dropIndex = visibleTodos.length;
+  }
+
+  onMount(() => {
+    hideCompleted = loadHideCompletedPreference();
+  });
+
+  function handleHideCompletedChange(event: Event) {
+    hideCompleted = (event.currentTarget as HTMLInputElement).checked;
+    saveHideCompletedPreference();
+  }
+
+  function loadHideCompletedPreference() {
+    if (!browser) return false;
+
+    try {
+      return localStorage.getItem(HIDE_COMPLETED_STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  function saveHideCompletedPreference() {
+    if (!browser) return;
+
+    try {
+      localStorage.setItem(HIDE_COMPLETED_STORAGE_KEY, hideCompleted ? 'true' : 'false');
+    } catch {
+      // Ignore storage failures; the toggle should still work for the current session.
+    }
   }
 
   function submitTodo(value = quickAdd) {
@@ -124,9 +156,10 @@
       {/if}
       <label class:active={hideCompleted} class="completed-toggle">
         <input
-          bind:checked={hideCompleted}
           aria-label="Hide completed tasks in daily card"
+          checked={hideCompleted}
           type="checkbox"
+          on:change={handleHideCompletedChange}
         />
         <span class="toggle-track" aria-hidden="true">
           <span class="toggle-knob"></span>
