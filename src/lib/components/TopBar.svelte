@@ -196,7 +196,7 @@
       </select>
     </label>
 
-    <div class="field">
+    <div class="field history-range-field">
       <span>History</span>
       <div class="segmented" aria-label="History range">
         <button
