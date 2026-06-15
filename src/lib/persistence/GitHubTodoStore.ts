@@ -1,7 +1,7 @@
-import type { TodoItem } from '$lib/types';
+import type { DogpileData } from '$lib/types';
 import type { GitHubPersistenceSettings } from './persistenceSettings';
 import type { TodoStore } from './TodoStore';
-import { parseTodoDocument, serializeTodoDocument } from './todoDocument';
+import { createEmptyDogpileData, parseDogpileDocument, serializeDogpileDocument } from './todoDocument';
 
 type GitHubContentResponse = {
   content?: string;
@@ -61,13 +61,13 @@ export class GitHubTodoStore implements TodoStore {
 
   constructor(private readonly settings: GitHubPersistenceSettings) {}
 
-  async loadTodos(): Promise<TodoItem[]> {
+  async loadData(): Promise<DogpileData> {
     const response = await this.request(contentUrl(this.settings));
 
     if (response.status === 404) {
       this.sha = undefined;
       this.remoteFileExists = false;
-      return [];
+      return createEmptyDogpileData();
     }
 
     await assertOk(response);
@@ -80,13 +80,13 @@ export class GitHubTodoStore implements TodoStore {
     this.sha = payload.sha;
     this.remoteFileExists = true;
 
-    return parseTodoDocument(decodeBase64Utf8(payload.content));
+    return parseDogpileDocument(decodeBase64Utf8(payload.content));
   }
 
-  async saveTodos(todos: TodoItem[]): Promise<void> {
+  async saveData(data: DogpileData): Promise<void> {
     const body: Record<string, unknown> = {
       message: `Dogpile sync: ${new Date().toLocaleString()}`,
-      content: encodeBase64Utf8(serializeTodoDocument(todos)),
+      content: encodeBase64Utf8(serializeDogpileDocument(data)),
       branch: this.settings.branch
     };
 
@@ -110,7 +110,7 @@ export class GitHubTodoStore implements TodoStore {
     this.remoteFileExists = true;
   }
 
-  async compactTodos(todos: TodoItem[]): Promise<void> {
+  async compactData(data: DogpileData): Promise<void> {
     const refResponse = await this.request(gitRefUrl(this.settings));
     await assertOk(refResponse);
 
@@ -138,7 +138,7 @@ export class GitHubTodoStore implements TodoStore {
             path: this.settings.path,
             mode: '100644',
             type: 'blob',
-            content: serializeTodoDocument(todos)
+            content: serializeDogpileDocument(data)
           }
         ]
       })

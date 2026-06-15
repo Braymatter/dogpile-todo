@@ -14,3 +14,19 @@ export type TodoItem = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type PlannedTask = {
+  id: string;
+  title: string;
+  notes?: string;
+  tags: string[];
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DogpileData = {
+  todos: TodoItem[];
+  plannedTasks: PlannedTask[];
+  notesMarkdown: string;
+};

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { TodoItem } from '$lib/types';
+import type { DogpileData, TodoItem } from '$lib/types';
 import { GitHubTodoStore } from './GitHubTodoStore';
 
 const todo: TodoItem = {
@@ -11,6 +11,12 @@ const todo: TodoItem = {
   completed: false,
   createdAt: '2026-05-28T12:00:00.000Z',
   updatedAt: '2026-05-28T12:00:00.000Z'
+};
+
+const data: DogpileData = {
+  todos: [todo],
+  plannedTasks: [],
+  notesMarkdown: 'Keep history tight.'
 };
 
 describe('GitHubTodoStore', () => {
@@ -41,7 +47,7 @@ describe('GitHubTodoStore', () => {
       autoCompactWeekly: false
     });
 
-    await store.compactTodos([todo]);
+    await store.compactData(data);
 
     expect(fetchMock).toHaveBeenCalledTimes(5);
     expect(fetchMock.mock.calls[0][0]).toBe(
@@ -52,7 +58,14 @@ describe('GitHubTodoStore', () => {
     );
     expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toMatchObject({
       base_tree: 'base-tree-sha',
-      tree: [{ path: 'dogpile/todos.json', mode: '100644', type: 'blob' }]
+      tree: [
+        {
+          path: 'dogpile/todos.json',
+          mode: '100644',
+          type: 'blob',
+          content: expect.stringContaining('"notesMarkdown": "Keep history tight."')
+        }
+      ]
     });
     expect(JSON.parse(String(fetchMock.mock.calls[3][1]?.body))).toMatchObject({
       tree: 'snapshot-tree-sha',

@@ -11,7 +11,7 @@ import {
   type PersistenceSettings
 } from '$lib/persistence/persistenceSettings';
 import type { TodoStore } from '$lib/persistence/TodoStore';
-import type { TodoItem } from '$lib/types';
+import type { DogpileData, PlannedTask, TodoItem } from '$lib/types';
 
 export type SyncState = {
   status:
@@ -31,6 +31,8 @@ const GITHUB_SAVE_DEBOUNCE_MS = 1500;
 const GITHUB_POLL_INTERVAL_MS = 15_000;
 
 export const todoItems = writable<TodoItem[]>([]);
+export const plannedTasks = writable<PlannedTask[]>([]);
+export const notesMarkdown = writable('');
 export const persistenceSettings = writable<PersistenceSettings>(defaultPersistenceSettings);
 export const syncState = writable<SyncState>({
   status: 'local',
@@ -42,6 +44,8 @@ let githubPersistence: GitHubTodoStore | null = null;
 let loaded = false;
 let applyingSnapshot = false;
 let currentTodos: TodoItem[] = [];
+let currentPlannedTasks: PlannedTask[] = [];
+let currentNotesMarkdown = '';
 let githubSaveTimer: ReturnType<typeof setTimeout> | null = null;
 let githubSaveInFlight = false;
 let saveAgainAfterFlight = false;
@@ -50,19 +54,21 @@ let githubPollTimer: ReturnType<typeof setTimeout> | null = null;
 let githubPollInFlightFor: GitHubTodoStore | null = null;
 let githubPollingEventsBound = false;
 let lastSyncedSignature = '';
+let lastSyncedData: DogpileData | null = null;
 
 todoItems.subscribe((todos) => {
   currentTodos = todos;
+  persistCurrentData();
+});
 
-  if (!browser || !loaded || applyingSnapshot) {
-    return;
-  }
+plannedTasks.subscribe((tasks) => {
+  currentPlannedTasks = tasks;
+  persistCurrentData();
+});
 
-  if (localPersistence) {
-    void localPersistence.saveTodos(todos);
-  }
-
-  scheduleGitHubSave(todos);
+notesMarkdown.subscribe((markdown) => {
+  currentNotesMarkdown = markdown;
+  persistCurrentData();
 });
 
 export async function loadTodos() {
@@ -79,12 +85,12 @@ export async function updatePersistenceSettings(settings: PersistenceSettings) {
   const normalizedSettings = normalizePersistenceSettings(settings);
   savePersistenceSettings(normalizedSettings);
   persistenceSettings.set(normalizedSettings);
-  await activatePersistence(normalizedSettings, currentTodos);
+  await activatePersistence(normalizedSettings, getCurrentData());
 }
 
 export async function syncTodosNow() {
   clearGitHubSaveTimer();
-  await saveGitHubTodos(currentTodos);
+  await saveGitHubData(getCurrentData());
 }
 
 export async function compactGitHubHistoryNow() {
@@ -109,12 +115,16 @@ export function addTodo(input: { title: string; notes?: string; tags?: string[] 
     updatedAt: now
   };
 
-  todoItems.update((todos) => [...todos, todo]);
+  commitData({
+    ...getCurrentData(),
+    todos: [...currentTodos, todo]
+  });
 }
 
 export function updateTodo(id: string, updates: Partial<Omit<TodoItem, 'id' | 'createdAt'>>) {
-  todoItems.update((todos) =>
-    todos.map((todo) =>
+  commitData({
+    ...getCurrentData(),
+    todos: currentTodos.map((todo) =>
       todo.id === id
         ? {
             ...todo,
@@ -126,21 +136,25 @@ export function updateTodo(id: string, updates: Partial<Omit<TodoItem, 'id' | 'c
           }
         : todo
     )
-  );
+  });
 }
 
 export function deleteTodo(id: string) {
-  todoItems.update((todos) => todos.filter((todo) => todo.id !== id));
+  commitData({
+    ...getCurrentData(),
+    todos: currentTodos.filter((todo) => todo.id !== id)
+  });
 }
 
 export function toggleTodoComplete(id: string, completed: boolean, durationMinutes?: number) {
   const now = new Date().toISOString();
 
-  todoItems.update((todos) =>
-    todos.map((todo) => {
+  commitData({
+    ...getCurrentData(),
+    todos: currentTodos.map((todo) => {
       if (todo.id !== id) return todo;
 
-      const completedOrders = todos
+      const completedOrders = currentTodos
         .filter((item) => item.completed && item.id !== id)
         .map((item) => item.order);
       const newestCompletedOrder =
@@ -155,33 +169,161 @@ export function toggleTodoComplete(id: string, completed: boolean, durationMinut
         updatedAt: now
       };
     })
-  );
+  });
 }
 
 export function reorderVisibleTodos(orderedVisibleIds: string[]) {
   if (orderedVisibleIds.length < 2) return;
 
-  todoItems.update((todos) => {
-    const todoById = new Map(todos.map((todo) => [todo.id, todo]));
-    const orderById = new Map<string, number>();
+  const todoById = new Map(currentTodos.map((todo) => [todo.id, todo]));
+  const orderById = new Map<string, number>();
 
-    assignVisibleGroupOrders(
-      todos,
-      orderedVisibleIds.filter((id) => todoById.get(id)?.completed),
-      true,
-      orderById
-    );
-    assignVisibleGroupOrders(
-      todos,
-      orderedVisibleIds.filter((id) => todoById.get(id)?.completed === false),
-      false,
-      orderById
-    );
+  assignVisibleGroupOrders(
+    currentTodos,
+    orderedVisibleIds.filter((id) => todoById.get(id)?.completed),
+    true,
+    orderById
+  );
+  assignVisibleGroupOrders(
+    currentTodos,
+    orderedVisibleIds.filter((id) => todoById.get(id)?.completed === false),
+    false,
+    orderById
+  );
 
-    return todos.map((todo) => {
+  commitData({
+    ...getCurrentData(),
+    todos: currentTodos.map((todo) => {
       const order = orderById.get(todo.id);
       return order === undefined ? todo : { ...todo, order, updatedAt: new Date().toISOString() };
-    });
+    })
+  });
+}
+
+export function addPlannedTask(input: { title: string; notes?: string; tags?: string[] }) {
+  const title = input.title.trim();
+  if (!title) return;
+
+  const now = new Date().toISOString();
+  const maxOrder = currentPlannedTasks.reduce((max, task) => Math.max(max, task.order), 0);
+
+  const task: PlannedTask = {
+    id: crypto.randomUUID(),
+    title,
+    notes: input.notes?.trim() ?? '',
+    tags: normalizeTags(input.tags ?? []),
+    order: maxOrder + 1000,
+    createdAt: now,
+    updatedAt: now
+  };
+
+  commitData({
+    ...getCurrentData(),
+    plannedTasks: [...currentPlannedTasks, task]
+  });
+}
+
+export function updatePlannedTask(
+  id: string,
+  updates: Partial<Omit<PlannedTask, 'id' | 'createdAt'>>
+) {
+  commitData({
+    ...getCurrentData(),
+    plannedTasks: currentPlannedTasks.map((task) =>
+      task.id === id
+        ? {
+            ...task,
+            ...updates,
+            tags: updates.tags ? normalizeTags(updates.tags) : task.tags,
+            title: updates.title?.trim() || task.title,
+            notes: updates.notes ?? task.notes,
+            updatedAt: new Date().toISOString()
+          }
+        : task
+    )
+  });
+}
+
+export function deletePlannedTask(id: string) {
+  commitData({
+    ...getCurrentData(),
+    plannedTasks: currentPlannedTasks.filter((task) => task.id !== id)
+  });
+}
+
+export function reorderPlannedTasks(orderedTaskIds: string[]) {
+  if (orderedTaskIds.length < 2) return;
+
+  const plannedTaskById = new Map(currentPlannedTasks.map((task) => [task.id, task]));
+  const visibleIds = orderedTaskIds.filter((id) => plannedTaskById.has(id));
+  const visibleIdSet = new Set(visibleIds);
+  const targetOrders = currentPlannedTasks
+    .filter((task) => visibleIdSet.has(task.id))
+    .map((task) => task.order)
+    .sort((a, b) => a - b);
+
+  if (targetOrders.length !== visibleIds.length) return;
+
+  const orderById = new Map(visibleIds.map((id, index) => [id, targetOrders[index]]));
+
+  commitData({
+    ...getCurrentData(),
+    plannedTasks: currentPlannedTasks.map((task) => {
+      const order = orderById.get(task.id);
+      return order === undefined ? task : { ...task, order, updatedAt: new Date().toISOString() };
+    })
+  });
+}
+
+export function movePlannedTaskToTodo(id: string) {
+  const task = currentPlannedTasks.find((plannedTask) => plannedTask.id === id);
+  if (!task) return;
+
+  const now = new Date().toISOString();
+  const todo: TodoItem = {
+    id: task.id,
+    title: task.title,
+    notes: task.notes ?? '',
+    tags: normalizeTags(task.tags),
+    order: getTopOpenTodoOrder(currentTodos),
+    completed: false,
+    createdAt: task.createdAt,
+    updatedAt: now
+  };
+
+  commitData({
+    ...getCurrentData(),
+    todos: [...currentTodos, todo],
+    plannedTasks: currentPlannedTasks.filter((plannedTask) => plannedTask.id !== id)
+  });
+}
+
+export function moveTodoToPlan(id: string) {
+  const todo = currentTodos.find((todoItem) => todoItem.id === id);
+  if (!todo) return;
+
+  const now = new Date().toISOString();
+  const task: PlannedTask = {
+    id: todo.id,
+    title: todo.title,
+    notes: todo.notes ?? '',
+    tags: normalizeTags(todo.tags),
+    order: getTopPlannedTaskOrder(currentPlannedTasks),
+    createdAt: todo.createdAt,
+    updatedAt: now
+  };
+
+  commitData({
+    ...getCurrentData(),
+    todos: currentTodos.filter((todoItem) => todoItem.id !== id),
+    plannedTasks: [...currentPlannedTasks, task]
+  });
+}
+
+export function updateNotesMarkdown(markdown: string) {
+  commitData({
+    ...getCurrentData(),
+    notesMarkdown: markdown
   });
 }
 
@@ -213,18 +355,65 @@ function normalizeOrder(todos: TodoItem[]) {
     .map((todo, index) => ({ ...todo, order: (index + 1) * 1000 }));
 }
 
-async function activatePersistence(settings: PersistenceSettings, seedTodos?: TodoItem[]) {
+function normalizePlannedTaskOrder(tasks: PlannedTask[]) {
+  return tasks
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    .map((task, index) => ({ ...task, order: (index + 1) * 1000 }));
+}
+
+function getCurrentData(): DogpileData {
+  return {
+    todos: currentTodos,
+    plannedTasks: currentPlannedTasks,
+    notesMarkdown: currentNotesMarkdown
+  };
+}
+
+function prepareDataForSave(data: DogpileData): DogpileData {
+  return {
+    todos: normalizeOrder(data.todos),
+    plannedTasks: normalizePlannedTaskOrder(data.plannedTasks),
+    notesMarkdown: data.notesMarkdown
+  };
+}
+
+function persistCurrentData() {
+  if (!browser || !loaded || applyingSnapshot) {
+    return;
+  }
+
+  const data = prepareDataForSave(getCurrentData());
+
+  if (localPersistence) {
+    void localPersistence.saveData(data);
+  }
+
+  scheduleGitHubSave(data);
+}
+
+function commitData(data: DogpileData) {
+  applyingSnapshot = true;
+  todoItems.set(data.todos);
+  plannedTasks.set(data.plannedTasks);
+  notesMarkdown.set(data.notesMarkdown);
+  applyingSnapshot = false;
+  persistCurrentData();
+}
+
+async function activatePersistence(settings: PersistenceSettings, seedData?: DogpileData) {
   clearGitHubSaveTimer();
   stopGitHubPolling();
   githubPersistence = null;
   lastSyncedSignature = '';
+  lastSyncedData = null;
 
-  const localTodos = seedTodos ?? (await localPersistence?.loadTodos()) ?? [];
+  const localData = seedData ?? (await localPersistence?.loadData()) ?? getCurrentData();
 
   if (!hasGitHubSettings(settings)) {
     loaded = true;
-    replaceTodos(localTodos);
-    await localPersistence?.saveTodos(currentTodos);
+    replaceData(localData);
+    await localPersistence?.saveData(prepareDataForSave(getCurrentData()));
     syncState.set({ status: 'local', message: 'Local storage' });
     return;
   }
@@ -234,27 +423,27 @@ async function activatePersistence(settings: PersistenceSettings, seedTodos?: To
   syncState.set({ status: 'loading', message: 'Loading from GitHub' });
 
   try {
-    const remoteTodos = await nextGitHubPersistence.loadTodos();
-    const todos = nextGitHubPersistence.remoteFileExists ? remoteTodos : localTodos;
+    const remoteData = await nextGitHubPersistence.loadData();
+    const data = nextGitHubPersistence.remoteFileExists ? remoteData : localData;
 
     loaded = true;
-    replaceTodos(todos);
-    await localPersistence?.saveTodos(currentTodos);
+    replaceData(data);
+    await localPersistence?.saveData(prepareDataForSave(getCurrentData()));
 
     if (nextGitHubPersistence.remoteFileExists) {
-      markSynced(currentTodos);
+      markSynced(getCurrentData());
       startGitHubPolling();
       return;
     }
 
-    await saveGitHubTodos(currentTodos);
+    await saveGitHubData(getCurrentData());
     if (githubPersistence === nextGitHubPersistence && nextGitHubPersistence.remoteFileExists) {
       startGitHubPolling();
     }
   } catch (error) {
     loaded = true;
-    replaceTodos(localTodos);
-    await localPersistence?.saveTodos(currentTodos);
+    replaceData(localData);
+    await localPersistence?.saveData(prepareDataForSave(getCurrentData()));
     syncState.set({
       status: 'error',
       message: `${describeError(error)} Local cache loaded.`
@@ -266,24 +455,26 @@ async function activatePersistence(settings: PersistenceSettings, seedTodos?: To
   }
 }
 
-function replaceTodos(todos: TodoItem[]) {
+function replaceData(data: DogpileData) {
   applyingSnapshot = true;
-  todoItems.set(normalizeOrder(todos));
+  todoItems.set(normalizeOrder(data.todos));
+  plannedTasks.set(normalizePlannedTaskOrder(data.plannedTasks));
+  notesMarkdown.set(data.notesMarkdown);
   applyingSnapshot = false;
 }
 
-function scheduleGitHubSave(todos: TodoItem[]) {
+function scheduleGitHubSave(data: DogpileData) {
   if (!githubPersistence) return;
 
   clearGitHubSaveTimer();
   syncState.set({ status: 'pending', message: 'Saving to GitHub soon' });
 
   githubSaveTimer = setTimeout(() => {
-    void saveGitHubTodos(todos);
+    void saveGitHubData(data);
   }, GITHUB_SAVE_DEBOUNCE_MS);
 }
 
-async function saveGitHubTodos(todos: TodoItem[]) {
+async function saveGitHubData(data: DogpileData) {
   const savingStore = githubPersistence;
 
   if (!savingStore) {
@@ -305,18 +496,18 @@ async function saveGitHubTodos(todos: TodoItem[]) {
   syncState.set({ status: 'syncing', message: 'Saving to GitHub' });
 
   try {
-    const savedTodos = normalizeOrder(todos);
-    await savingStore.saveTodos(savedTodos);
+    const savedData = prepareDataForSave(data);
+    await savingStore.saveData(savedData);
     if (githubPersistence !== savingStore) return;
 
-    markSynced(savedTodos);
+    markSynced(savedData);
     queueGitHubAutoCompaction(savingStore);
   } catch (error) {
     if (githubPersistence !== savingStore) return;
 
     if (error instanceof GitHubConflictError) {
       try {
-        await mergeGitHubConflict(todos, savingStore);
+        await mergeGitHubConflict(data, savingStore);
       } catch (mergeError) {
         syncState.set({ status: 'error', message: describeError(mergeError) });
       }
@@ -330,26 +521,26 @@ async function saveGitHubTodos(todos: TodoItem[]) {
     saveAgainAfterFlight = false;
 
     if (shouldSaveAgain) {
-      scheduleGitHubSave(currentTodos);
+      scheduleGitHubSave(getCurrentData());
     }
   }
 }
 
-async function mergeGitHubConflict(localTodos: TodoItem[], mergingStore = githubPersistence) {
+async function mergeGitHubConflict(localData: DogpileData, mergingStore = githubPersistence) {
   if (!mergingStore || githubPersistence !== mergingStore) return;
 
   syncState.set({ status: 'conflict', message: 'Merging remote GitHub changes' });
 
-  const remoteTodos = await mergingStore.loadTodos();
+  const remoteData = await mergingStore.loadData();
   if (githubPersistence !== mergingStore) return;
 
-  const mergedTodos = mergeTodosById(localTodos, remoteTodos);
-  replaceTodos(mergedTodos);
-  await localPersistence?.saveTodos(currentTodos);
-  await mergingStore.saveTodos(currentTodos);
+  const mergedData = mergeDogpileData(localData, remoteData);
+  replaceData(mergedData);
+  await localPersistence?.saveData(prepareDataForSave(getCurrentData()));
+  await mergingStore.saveData(prepareDataForSave(getCurrentData()));
   if (githubPersistence !== mergingStore) return;
 
-  markSynced(currentTodos, 'Merged and synced with GitHub');
+  markSynced(getCurrentData(), 'Merged and synced with GitHub');
   queueGitHubAutoCompaction(mergingStore);
 }
 
@@ -379,28 +570,28 @@ async function compactGitHubHistory(
     clearGitHubSaveTimer();
     if (githubPersistence !== compactingStore) return;
 
-    const remoteTodos = await compactingStore.loadTodos();
+    const remoteData = await compactingStore.loadData();
     if (githubPersistence !== compactingStore) return;
 
-    const todosToCompact = compactingStore.remoteFileExists
-      ? mergeTodosById(currentTodos, remoteTodos)
-      : normalizeOrder(currentTodos);
+    const dataToCompact = compactingStore.remoteFileExists
+      ? mergeDogpileData(getCurrentData(), remoteData)
+      : prepareDataForSave(getCurrentData());
 
-    replaceTodos(todosToCompact);
-    await localPersistence?.saveTodos(currentTodos);
+    replaceData(dataToCompact);
+    await localPersistence?.saveData(prepareDataForSave(getCurrentData()));
 
     syncState.set({ status: 'compacting', message: 'Compacting GitHub history' });
-    await compactingStore.compactTodos(currentTodos);
+    await compactingStore.compactData(prepareDataForSave(getCurrentData()));
     if (githubPersistence !== compactingStore) return;
 
-    const compactedTodos = await compactingStore.loadTodos();
+    const compactedData = await compactingStore.loadData();
     if (githubPersistence !== compactingStore) return;
 
-    replaceTodos(mergeTodosById(currentTodos, compactedTodos));
-    await localPersistence?.saveTodos(currentTodos);
+    replaceData(mergeDogpileData(getCurrentData(), compactedData));
+    await localPersistence?.saveData(prepareDataForSave(getCurrentData()));
     markGitHubCompacted();
     markSynced(
-      currentTodos,
+      getCurrentData(),
       mode === 'auto' ? 'Auto-compacted GitHub history' : 'Compacted GitHub history'
     );
   } catch (error) {
@@ -416,7 +607,7 @@ async function compactGitHubHistory(
 
     if (saveAgainAfterFlight) {
       saveAgainAfterFlight = false;
-      scheduleGitHubSave(currentTodos);
+      scheduleGitHubSave(getCurrentData());
     }
   }
 }
@@ -440,11 +631,11 @@ function scheduleNextGitHubPoll(delay = GITHUB_POLL_INTERVAL_MS) {
 
   githubPollTimer = setTimeout(() => {
     githubPollTimer = null;
-    void pollGitHubTodos();
+    void pollGitHubData();
   }, delay);
 }
 
-async function pollGitHubTodos() {
+async function pollGitHubData() {
   const pollingStore = githubPersistence;
   if (!pollingStore || githubPollInFlightFor) return;
 
@@ -461,7 +652,7 @@ async function pollGitHubTodos() {
   githubPollInFlightFor = pollingStore;
 
   try {
-    const remoteTodos = await pollingStore.loadTodos();
+    const remoteData = await pollingStore.loadData();
     if (githubPersistence !== pollingStore) return;
 
     if (!pollingStore.remoteFileExists) {
@@ -469,7 +660,7 @@ async function pollGitHubTodos() {
       return;
     }
 
-    await reconcilePolledTodos(remoteTodos);
+    await reconcilePolledData(remoteData);
   } catch (error) {
     if (githubPersistence === pollingStore) {
       syncState.set({ status: 'error', message: describeError(error) });
@@ -482,32 +673,32 @@ async function pollGitHubTodos() {
   }
 }
 
-async function reconcilePolledTodos(remoteTodos: TodoItem[]) {
-  const remoteSignature = getTodosSignature(remoteTodos);
+async function reconcilePolledData(remoteData: DogpileData) {
+  const remoteSignature = getDataSignature(remoteData);
 
   if (remoteSignature === lastSyncedSignature) {
     if (hasUnsyncedLocalChanges()) {
-      await saveGitHubTodos(currentTodos);
+      await saveGitHubData(getCurrentData());
       return;
     }
 
-    markSynced(currentTodos);
+    markSynced(getCurrentData());
     return;
   }
 
   if (!hasUnsyncedLocalChanges()) {
-    replaceTodos(remoteTodos);
-    await localPersistence?.saveTodos(currentTodos);
-    markSynced(currentTodos, 'Updated from GitHub');
+    replaceData(remoteData);
+    await localPersistence?.saveData(prepareDataForSave(getCurrentData()));
+    markSynced(getCurrentData(), 'Updated from GitHub');
     return;
   }
 
   syncState.set({ status: 'conflict', message: 'Merging remote GitHub changes' });
 
-  const mergedTodos = mergeTodosById(currentTodos, remoteTodos);
-  replaceTodos(mergedTodos);
-  await localPersistence?.saveTodos(currentTodos);
-  await saveGitHubTodos(currentTodos);
+  const mergedData = mergeDogpileData(getCurrentData(), remoteData);
+  replaceData(mergedData);
+  await localPersistence?.saveData(prepareDataForSave(getCurrentData()));
+  await saveGitHubData(getCurrentData());
 }
 
 function mergeTodosById(localTodos: TodoItem[], remoteTodos: TodoItem[]) {
@@ -525,6 +716,65 @@ function mergeTodosById(localTodos: TodoItem[], remoteTodos: TodoItem[]) {
   }
 
   return normalizeOrder(Array.from(todosById.values()));
+}
+
+function mergePlannedTasksById(localTasks: PlannedTask[], remoteTasks: PlannedTask[]) {
+  const tasksById = new Map<string, PlannedTask>();
+
+  for (const task of remoteTasks) {
+    tasksById.set(task.id, task);
+  }
+
+  for (const task of localTasks) {
+    const existing = tasksById.get(task.id);
+    if (!existing || new Date(task.updatedAt).getTime() >= new Date(existing.updatedAt).getTime()) {
+      tasksById.set(task.id, task);
+    }
+  }
+
+  return normalizePlannedTaskOrder(Array.from(tasksById.values()));
+}
+
+function mergeDogpileData(localData: DogpileData, remoteData: DogpileData): DogpileData {
+  return prepareDataForSave({
+    todos: mergeTodosById(localData.todos, remoteData.todos),
+    plannedTasks: mergePlannedTasksById(localData.plannedTasks, remoteData.plannedTasks),
+    notesMarkdown: mergeNotesMarkdown(localData, remoteData)
+  });
+}
+
+function mergeNotesMarkdown(localData: DogpileData, remoteData: DogpileData) {
+  if (localData.notesMarkdown === remoteData.notesMarkdown) {
+    return localData.notesMarkdown;
+  }
+
+  const baseMarkdown = lastSyncedData?.notesMarkdown;
+  if (baseMarkdown !== undefined) {
+    const localChanged = localData.notesMarkdown !== baseMarkdown;
+    const remoteChanged = remoteData.notesMarkdown !== baseMarkdown;
+
+    if (!localChanged && remoteChanged) {
+      return remoteData.notesMarkdown;
+    }
+  }
+
+  return localData.notesMarkdown;
+}
+
+function getTopOpenTodoOrder(todos: TodoItem[]) {
+  const openOrders = todos.filter((todo) => !todo.completed).map((todo) => todo.order);
+  if (openOrders.length) return Math.min(...openOrders) - 1000;
+
+  const completedOrders = todos.filter((todo) => todo.completed).map((todo) => todo.order);
+  if (completedOrders.length) return Math.max(...completedOrders) + 1000;
+
+  return 1000;
+}
+
+function getTopPlannedTaskOrder(tasks: PlannedTask[]) {
+  if (!tasks.length) return 1000;
+
+  return Math.min(...tasks.map((task) => task.order)) - 1000;
 }
 
 function clearGitHubSaveTimer() {
@@ -561,7 +811,7 @@ function pollGitHubWhenAvailable() {
   if (!canPollGitHub()) return;
 
   clearGitHubPollTimer();
-  void pollGitHubTodos();
+  void pollGitHubData();
 }
 
 function canPollGitHub() {
@@ -573,11 +823,14 @@ function hasPendingGitHubSave() {
 }
 
 function hasUnsyncedLocalChanges() {
-  return hasPendingGitHubSave() || getTodosSignature(currentTodos) !== lastSyncedSignature;
+  return hasPendingGitHubSave() || getDataSignature(getCurrentData()) !== lastSyncedSignature;
 }
 
-function markSynced(todos: TodoItem[], message = 'Synced with GitHub') {
-  lastSyncedSignature = getTodosSignature(todos);
+function markSynced(data: DogpileData, message = 'Synced with GitHub') {
+  const syncedData = prepareDataForSave(data);
+
+  lastSyncedSignature = getDataSignature(syncedData);
+  lastSyncedData = cloneData(syncedData);
   syncState.set({
     status: 'synced',
     message,
@@ -643,8 +896,16 @@ function getWeekKey(date = new Date()) {
   return `${target.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
 }
 
-function getTodosSignature(todos: TodoItem[]) {
-  return JSON.stringify(normalizeOrder(todos));
+function getDataSignature(data: DogpileData) {
+  return JSON.stringify(prepareDataForSave(data));
+}
+
+function cloneData(data: DogpileData): DogpileData {
+  return {
+    todos: data.todos.map((todo) => ({ ...todo, tags: [...todo.tags] })),
+    plannedTasks: data.plannedTasks.map((task) => ({ ...task, tags: [...task.tags] })),
+    notesMarkdown: data.notesMarkdown
+  };
 }
 
 function describeError(error: unknown) {

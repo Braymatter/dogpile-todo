@@ -1,6 +1,6 @@
-import type { TodoItem } from '$lib/types';
+import type { DogpileData } from '$lib/types';
 
 export interface TodoStore {
-  loadTodos(): Promise<TodoItem[]>;
-  saveTodos(todos: TodoItem[]): Promise<void>;
+  loadData(): Promise<DogpileData>;
+  saveData(data: DogpileData): Promise<void>;
 }

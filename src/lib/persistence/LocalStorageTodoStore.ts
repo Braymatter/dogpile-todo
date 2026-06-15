@@ -1,18 +1,18 @@
-import type { TodoItem } from '$lib/types';
+import type { DogpileData } from '$lib/types';
 import type { TodoStore } from './TodoStore';
-import { parseTodoDocument } from './todoDocument';
+import { createEmptyDogpileData, parseDogpileDocument, serializeDogpileDocument } from './todoDocument';
 
 const STORAGE_KEY = 'dogpile.todos.v1';
 
 export class LocalStorageTodoStore implements TodoStore {
-  async loadTodos(): Promise<TodoItem[]> {
+  async loadData(): Promise<DogpileData> {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
+    if (!raw) return createEmptyDogpileData();
 
-    return parseTodoDocument(raw);
+    return parseDogpileDocument(raw);
   }
 
-  async saveTodos(todos: TodoItem[]): Promise<void> {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+  async saveData(data: DogpileData): Promise<void> {
+    localStorage.setItem(STORAGE_KEY, serializeDogpileDocument(data));
   }
 }

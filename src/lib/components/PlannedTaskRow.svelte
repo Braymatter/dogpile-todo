@@ -1,55 +1,44 @@
 <script lang="ts">
-  import { browser } from '$app/environment';
   import { createEventDispatcher } from 'svelte';
   import {
-    Check,
     ChevronDown,
     ChevronRight,
-    ClipboardList,
     GripVertical,
     Pencil,
     Save,
+    Send,
     Trash2,
-    Undo2,
     X
   } from '@lucide/svelte';
   import { parseEditableTag } from '$lib/parseEditableTag';
-  import type { TodoItem } from '$lib/types';
+  import type { PlannedTask } from '$lib/types';
 
-  export let todo: TodoItem;
-  export let draggableRow = false;
+  export let task: PlannedTask;
   export let activeFilterTags: string[] = [];
 
   const dispatch = createEventDispatcher<{
-    deleteTodo: { id: string };
-    durationChange: { id: string; durationMinutes?: number };
-    moveToPlan: { id: string };
+    deleteTask: { id: string };
+    moveToTodo: { id: string };
     toggleTagFilter: { tag: string };
-    toggleComplete: { id: string; completed: boolean };
-    updateTodo: { id: string; updates: Partial<TodoItem> };
+    updateTask: { id: string; updates: Partial<PlannedTask> };
   }>();
 
   let editing = false;
   let notesExpanded = false;
-  let titleDraft = todo.title;
-  let notesDraft = todo.notes ?? '';
+  let titleDraft = task.title;
+  let notesDraft = task.notes ?? '';
   let tagDraft = '';
   let tagError = '';
-  let durationDraft: string | number = todo.durationMinutes?.toString() ?? '';
 
-  $: hasNotes = Boolean(todo.notes?.trim());
-  $: notesDirty = notesDraft !== (todo.notes ?? '');
+  $: hasNotes = Boolean(task.notes?.trim());
+  $: notesDirty = notesDraft !== (task.notes ?? '');
   $: activeFilterTagSet = new Set(activeFilterTags.map((tag) => tag.toLowerCase()));
 
   $: if (!editing) {
-    titleDraft = todo.title;
-    notesDraft = todo.notes ?? '';
+    titleDraft = task.title;
+    notesDraft = task.notes ?? '';
     tagDraft = '';
     tagError = '';
-  }
-
-  $: if (browser && document.activeElement?.id !== `duration-${todo.id}`) {
-    durationDraft = todo.durationMinutes?.toString() ?? '';
   }
 
   $: if (!hasNotes) {
@@ -59,7 +48,7 @@
   function saveEdits() {
     if (!titleDraft.trim()) return;
 
-    const updates: Partial<TodoItem> = {
+    const updates: Partial<PlannedTask> = {
       title: titleDraft,
       notes: notesDraft
     };
@@ -72,11 +61,11 @@
         return;
       }
 
-      updates.tags = mergeTags(todo.tags, [tag]);
+      updates.tags = mergeTags(task.tags, [tag]);
     }
 
-    dispatch('updateTodo', {
-      id: todo.id,
+    dispatch('updateTask', {
+      id: task.id,
       updates
     });
     tagDraft = '';
@@ -92,22 +81,11 @@
   }
 
   function saveNotes() {
-    dispatch('updateTodo', {
-      id: todo.id,
+    dispatch('updateTask', {
+      id: task.id,
       updates: {
         notes: notesDraft
       }
-    });
-  }
-
-  function saveDuration() {
-    const trimmed = String(durationDraft).trim();
-    const minutes = Number(trimmed);
-
-    dispatch('durationChange', {
-      id: todo.id,
-      durationMinutes:
-        trimmed === '' || !Number.isFinite(minutes) ? undefined : Math.max(0, Math.round(minutes))
     });
   }
 
@@ -124,14 +102,14 @@
       return;
     }
 
-    const nextTags = mergeTags(todo.tags, [tag]);
+    const nextTags = mergeTags(task.tags, [tag]);
     tagDraft = '';
     tagError = '';
 
-    if (nextTags.length === todo.tags.length) return;
+    if (nextTags.length === task.tags.length) return;
 
-    dispatch('updateTodo', {
-      id: todo.id,
+    dispatch('updateTask', {
+      id: task.id,
       updates: { tags: nextTags }
     });
   }
@@ -144,10 +122,10 @@
   }
 
   function removeTag(tag: string) {
-    dispatch('updateTodo', {
-      id: todo.id,
+    dispatch('updateTask', {
+      id: task.id,
       updates: {
-        tags: todo.tags.filter((existingTag) => existingTag.toLowerCase() !== tag.toLowerCase())
+        tags: task.tags.filter((existingTag) => existingTag.toLowerCase() !== tag.toLowerCase())
       }
     });
   }
@@ -174,26 +152,10 @@
   }
 </script>
 
-<div class:completed={todo.completed} class:draggable={draggableRow} class:editing class="todo-row">
-  {#if draggableRow}
-    <span class="drag-handle" aria-hidden="true">
-      <GripVertical size={17} />
-    </span>
-  {/if}
-
-  <button
-    class="icon-button complete-button"
-    aria-label={todo.completed ? 'Mark incomplete' : 'Mark complete'}
-    title={todo.completed ? 'Mark incomplete' : 'Mark complete'}
-    type="button"
-    on:click={() => dispatch('toggleComplete', { id: todo.id, completed: !todo.completed })}
-  >
-    {#if todo.completed}
-      <Undo2 size={16} aria-hidden="true" />
-    {:else}
-      <Check size={16} aria-hidden="true" />
-    {/if}
-  </button>
+<div class:editing class="todo-row planned-row">
+  <span class="drag-handle" aria-hidden="true">
+    <GripVertical size={17} />
+  </span>
 
   <div class="todo-content">
     {#if editing}
@@ -224,10 +186,10 @@
     {:else}
       <div class="todo-title-row">
         <div class="todo-title-line">
-          <strong>{todo.title}</strong>
-          {#if todo.tags.length}
+          <strong>{task.title}</strong>
+          {#if task.tags.length}
             <div class="tag-list inline-tag-list" aria-label="Tags">
-              {#each todo.tags as tag}
+              {#each task.tags as tag}
                 <button
                   class:active={isFilterTagActive(tag)}
                   class="tag-chip filter-tag"
@@ -242,38 +204,15 @@
             </div>
           {/if}
         </div>
-        {#if todo.completed}
-          <label class="duration-field">
-            <span>min</span>
-            <input
-              id={`duration-${todo.id}`}
-              bind:value={durationDraft}
-              inputmode="numeric"
-              min="0"
-              type="number"
-              on:change={saveDuration}
-            />
-          </label>
-        {/if}
       </div>
     {/if}
-
   </div>
 
   <div class="row-actions">
     {#if editing}
       <button
         class="icon-button"
-        aria-label="Move task to plan"
-        title="Move to plan"
-        type="button"
-        on:click={() => dispatch('moveToPlan', { id: todo.id })}
-      >
-        <ClipboardList size={16} aria-hidden="true" />
-      </button>
-      <button
-        class="icon-button"
-        aria-label="Save task"
+        aria-label="Save planned task"
         title="Save"
         type="button"
         on:click={saveEdits}
@@ -292,6 +231,15 @@
     {:else}
       <button
         class="icon-button"
+        aria-label="Move planned task to Todo"
+        title="Move to Todo"
+        type="button"
+        on:click={() => dispatch('moveToTodo', { id: task.id })}
+      >
+        <Send size={16} aria-hidden="true" />
+      </button>
+      <button
+        class="icon-button"
         aria-expanded={hasNotes ? notesExpanded : undefined}
         aria-label={hasNotes ? (notesExpanded ? 'Collapse notes' : 'Expand notes') : 'No notes'}
         disabled={!hasNotes}
@@ -307,7 +255,7 @@
       </button>
       <button
         class="icon-button"
-        aria-label="Edit task"
+        aria-label="Edit planned task"
         title="Edit"
         type="button"
         on:click={() => (editing = true)}
@@ -316,10 +264,10 @@
       </button>
       <button
         class="icon-button danger"
-        aria-label="Delete task"
+        aria-label="Delete planned task"
         title="Delete"
         type="button"
-        on:click={() => dispatch('deleteTodo', { id: todo.id })}
+        on:click={() => dispatch('deleteTask', { id: task.id })}
       >
         <Trash2 size={16} aria-hidden="true" />
       </button>
@@ -327,12 +275,12 @@
   </div>
 
   {#if !editing && hasNotes}
-    <p class="todo-note-preview todo-row-wide">{todo.notes}</p>
+    <p class="todo-note-preview todo-row-wide">{task.notes}</p>
   {/if}
 
-  {#if editing && todo.tags.length}
+  {#if editing && task.tags.length}
     <div class:editable-tags={editing} class="tag-list todo-row-wide" aria-label="Tags">
-      {#each todo.tags as tag}
+      {#each task.tags as tag}
         <button class="tag-chip" type="button" on:click={() => removeTag(tag)}>
           {tag}
           <X size={12} aria-hidden="true" />

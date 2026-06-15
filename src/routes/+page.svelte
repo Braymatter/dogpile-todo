@@ -7,17 +7,26 @@
   import SettingsModal from '$lib/components/SettingsModal.svelte';
   import TopBar from '$lib/components/TopBar.svelte';
   import {
+    addPlannedTask,
     addTodo,
     compactGitHubHistoryNow,
+    deletePlannedTask,
     deleteTodo,
     loadTodos,
+    movePlannedTaskToTodo,
+    moveTodoToPlan,
+    notesMarkdown,
+    plannedTasks,
     persistenceSettings,
+    reorderPlannedTasks,
     reorderVisibleTodos,
     syncState,
     syncTodosNow,
     todoItems,
     toggleTodoComplete,
+    updateNotesMarkdown,
     updatePersistenceSettings,
+    updatePlannedTask,
     updateTodo
   } from '$lib/stores/todos';
   import type { PersistenceSettings } from '$lib/persistence/persistenceSettings';
@@ -36,11 +45,15 @@
   let pendingDurationTodo: TodoItem | null = null;
   let settingsOpen = false;
   let filterStorageReady = false;
+  let dailyTab: 'todo' | 'plan' | 'notes' = 'todo';
 
   $: parsedFilter = parseTodoFilter(filterText);
   $: filterError = parsedFilter.ok ? null : parsedFilter.error;
   $: activeFilterTags = parsedFilter.ok ? parsedFilter.query.tags : [];
-  $: availableFilterTags = getUniqueSortedTags($todoItems.flatMap((todo) => todo.tags));
+  $: availableFilterTags = getUniqueSortedTags([
+    ...$todoItems.flatMap((todo) => todo.tags),
+    ...$plannedTasks.flatMap((task) => task.tags)
+  ]);
 
   function matchesStatus(todo: TodoItem, status: CompletionFilter) {
     if (status === 'completed' && !todo.completed) return false;
@@ -141,28 +154,56 @@
     on:syncNow={syncTodosNow}
   />
 
-  <section class="workspace" aria-label="Dogpile workspace">
-    <section class="history-pane" aria-label="Previous completed work">
-      <HistoryView
-        activeFilterTags={activeFilterTags}
-        todos={historyTodos}
-        range={historyRange}
-        on:markIncomplete={handleHistoryMarkIncomplete}
-        on:toggleTagFilter={handleToggleTagFilter}
-        on:updateTodo={(event) => updateTodo(event.detail.id, event.detail.updates)}
-      />
+  <section class:companion-mode={dailyTab !== 'todo'} class="workspace" aria-label="Dogpile workspace">
+    <section class="history-pane" aria-label={dailyTab === 'todo' ? 'Previous completed work' : 'Today'}>
+      {#if dailyTab === 'todo'}
+        <HistoryView
+          activeFilterTags={activeFilterTags}
+          todos={historyTodos}
+          range={historyRange}
+          on:markIncomplete={handleHistoryMarkIncomplete}
+          on:toggleTagFilter={handleToggleTagFilter}
+          on:updateTodo={(event) => updateTodo(event.detail.id, event.detail.updates)}
+        />
+      {:else}
+        <DailyCard
+          activeFilterTags={activeFilterTags}
+          activeTab="todo"
+          showTabs={false}
+          todos={dailyTodos}
+          on:addTodo={handleAddTodo}
+          on:deleteTodo={(event) => deleteTodo(event.detail.id)}
+          on:durationChange={handleDurationChange}
+          on:moveTodoToPlan={(event) => moveTodoToPlan(event.detail.id)}
+          on:reorderTodos={(event) => reorderVisibleTodos(event.detail.ids)}
+          on:toggleTagFilter={handleToggleTagFilter}
+          on:toggleComplete={handleToggleComplete}
+          on:updateTodo={(event) => updateTodo(event.detail.id, event.detail.updates)}
+        />
+      {/if}
     </section>
 
     <aside class="daily-pane" aria-label="Today">
       <DailyCard
+        bind:activeTab={dailyTab}
         activeFilterTags={activeFilterTags}
+        notesMarkdown={$notesMarkdown}
+        plannedTasks={$plannedTasks}
         todos={dailyTodos}
+        on:addPlannedTask={(event) => addPlannedTask(event.detail)}
         on:addTodo={handleAddTodo}
+        on:deletePlannedTask={(event) => deletePlannedTask(event.detail.id)}
         on:deleteTodo={(event) => deleteTodo(event.detail.id)}
         on:durationChange={handleDurationChange}
+        on:movePlannedTaskToTodo={(event) => movePlannedTaskToTodo(event.detail.id)}
+        on:moveTodoToPlan={(event) => moveTodoToPlan(event.detail.id)}
+        on:reorderPlannedTasks={(event) => reorderPlannedTasks(event.detail.ids)}
         on:reorderTodos={(event) => reorderVisibleTodos(event.detail.ids)}
         on:toggleTagFilter={handleToggleTagFilter}
         on:toggleComplete={handleToggleComplete}
+        on:updateNotesMarkdown={(event) => updateNotesMarkdown(event.detail.markdown)}
+        on:updatePlannedTask={(event) =>
+          updatePlannedTask(event.detail.id, event.detail.updates)}
         on:updateTodo={(event) => updateTodo(event.detail.id, event.detail.updates)}
       />
     </aside>
