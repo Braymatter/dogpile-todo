@@ -554,6 +554,7 @@
         class:active={activeTab === 'todo'}
         aria-selected={activeTab === 'todo'}
         role="tab"
+        title="Show today's tasks"
         type="button"
         on:click={() => setActiveTab('todo')}
       >
@@ -564,6 +565,7 @@
         class:active={activeTab === 'plan'}
         aria-selected={activeTab === 'plan'}
         role="tab"
+        title="Show planned tasks"
         type="button"
         on:click={() => setActiveTab('plan')}
       >
@@ -574,6 +576,7 @@
         class:active={activeTab === 'notes'}
         aria-selected={activeTab === 'notes'}
         role="tab"
+        title="Open scratchpad notes"
         type="button"
         on:click={() => setActiveTab('notes')}
       >
@@ -592,11 +595,19 @@
         </div>
         <div class="daily-heading-actions">
           {#if hideCompleted}
-            <span class="completed-count-badge" aria-label={`${completedCount} completed tasks hidden`}>
+            <span
+              class="completed-count-badge"
+              aria-label={`${completedCount} completed tasks hidden`}
+              title={`${completedCount} completed tasks hidden`}
+            >
               {completedCount}
             </span>
           {/if}
-          <label class:active={hideCompleted} class="completed-toggle">
+          <label
+            class:active={hideCompleted}
+            class="completed-toggle"
+            title={hideCompleted ? 'Show completed tasks' : 'Hide completed tasks'}
+          >
             <input
               aria-label="Hide completed tasks in daily card"
               checked={hideCompleted}
@@ -657,6 +668,7 @@
             aria-label="Add task"
             bind:value={quickAdd}
             placeholder={quickAddPlaceholder}
+            title="Add a task. Include #tags to attach tags."
             type="text"
             on:keydown={handleQuickAddKeydown}
           />
@@ -715,6 +727,7 @@
             aria-label="Add planned task"
             bind:value={plannedQuickAdd}
             placeholder={plannedQuickAddPlaceholder}
+            title="Add a planned task. Include #tags to attach tags."
             type="text"
             on:keydown={handlePlannedQuickAddKeydown}
           />
@@ -760,6 +773,7 @@
                   aria-label={`Edit notes line ${index + 1}`}
                   role="button"
                   tabindex="0"
+                  title={`Edit notes line ${index + 1}`}
                   on:click={() => void focusNoteLine(index)}
                   on:keydown={(event) => handleNoteLinePreviewKeydown(event, index)}
                 >

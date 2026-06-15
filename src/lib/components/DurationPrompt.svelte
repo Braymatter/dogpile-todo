@@ -56,19 +56,30 @@
           inputmode="numeric"
           min="0"
           placeholder="25"
+          title="Minutes spent on this task"
           type="number"
         />
       </label>
 
       <div class="modal-actions">
-        <button class="secondary-button" type="button" on:click={() => dispatch('cancel')}>
+        <button
+          class="secondary-button"
+          title="Cancel completion"
+          type="button"
+          on:click={() => dispatch('cancel')}
+        >
           <X size={16} aria-hidden="true" />
           Cancel
         </button>
-        <button class="secondary-button" type="button" on:click={() => dispatch('skip')}>
+        <button
+          class="secondary-button"
+          title="Complete without tracking duration"
+          type="button"
+          on:click={() => dispatch('skip')}
+        >
           Skip
         </button>
-        <button class="primary-button" type="submit">
+        <button class="primary-button" title="Save duration and complete task" type="submit">
           <Check size={16} aria-hidden="true" />
           Save
         </button>

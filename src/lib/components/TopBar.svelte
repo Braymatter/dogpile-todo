@@ -155,6 +155,7 @@
           aria-invalid={Boolean(filterError)}
           placeholder="fuzzy search --tag !tag"
           role="combobox"
+          title="Filter tasks by text, --tag, or !tag"
           type="text"
           on:blur={() => (tagAutocompleteOpen = false)}
           on:click={handleFilterCursorEvent}
@@ -174,6 +175,7 @@
                 aria-selected={index === activeSuggestionIndex}
                 role="option"
                 tabindex="-1"
+                title={`Use ${activeTagToken.prefix}${tag}`}
                 type="button"
                 on:mousedown|preventDefault={() => chooseTagSuggestion(tag)}
               >
@@ -189,7 +191,7 @@
 
     <label class="field status-field">
       <span>Status</span>
-      <select bind:value={completionFilter}>
+      <select bind:value={completionFilter} title="Filter tasks by completion status">
         <option value="all">All</option>
         <option value="incomplete">Incomplete</option>
         <option value="completed">Completed</option>
@@ -202,6 +204,7 @@
         <button
           aria-pressed={historyRange === 7}
           class:active={historyRange === 7}
+          title="Show the previous 7 days"
           type="button"
           on:click={() => (historyRange = 7)}
         >
@@ -210,6 +213,7 @@
         <button
           aria-pressed={historyRange === 30}
           class:active={historyRange === 30}
+          title="Show the previous 30 days"
           type="button"
           on:click={() => (historyRange = 30)}
         >
@@ -231,7 +235,7 @@
         class="icon-button"
         aria-label="Sync now"
         disabled={sync.status === 'local'}
-        title="Sync now"
+        title={sync.status === 'local' ? 'Sync requires GitHub storage' : 'Sync now'}
         type="button"
         on:click={() => dispatch('syncNow')}
       >
@@ -252,7 +256,7 @@
     <button
       class="theme-toggle"
       aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-      title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+      title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
       type="button"
       on:click={toggleTheme}
     >

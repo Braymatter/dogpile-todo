@@ -153,7 +153,7 @@
 </script>
 
 <div class:editing class="todo-row planned-row">
-  <span class="drag-handle" aria-hidden="true">
+  <span class="drag-handle" aria-hidden="true" title="Drag to reorder planned task">
     <GripVertical size={17} />
   </span>
 
@@ -213,7 +213,7 @@
       <button
         class="icon-button"
         aria-label="Save planned task"
-        title="Save"
+        title="Save planned task"
         type="button"
         on:click={saveEdits}
       >
@@ -222,7 +222,7 @@
       <button
         class="icon-button"
         aria-label="Cancel editing"
-        title="Cancel"
+        title="Cancel editing"
         type="button"
         on:click={() => (editing = false)}
       >
@@ -256,7 +256,7 @@
       <button
         class="icon-button"
         aria-label="Edit planned task"
-        title="Edit"
+        title="Edit planned task"
         type="button"
         on:click={() => (editing = true)}
       >
@@ -265,7 +265,7 @@
       <button
         class="icon-button danger"
         aria-label="Delete planned task"
-        title="Delete"
+        title="Delete planned task"
         type="button"
         on:click={() => dispatch('deleteTask', { id: task.id })}
       >
@@ -281,7 +281,12 @@
   {#if editing && task.tags.length}
     <div class:editable-tags={editing} class="tag-list todo-row-wide" aria-label="Tags">
       {#each task.tags as tag}
-        <button class="tag-chip" type="button" on:click={() => removeTag(tag)}>
+        <button
+          class="tag-chip"
+          title={`Remove tag ${tag}`}
+          type="button"
+          on:click={() => removeTag(tag)}
+        >
           {tag}
           <X size={12} aria-hidden="true" />
         </button>
@@ -298,6 +303,7 @@
       <button
         class="secondary-button compact-save"
         disabled={!notesDirty}
+        title={notesDirty ? 'Save notes' : 'No notes changes to save'}
         type="button"
         on:click={saveNotes}
       >

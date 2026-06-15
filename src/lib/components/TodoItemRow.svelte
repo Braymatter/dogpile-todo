@@ -176,7 +176,7 @@
 
 <div class:completed={todo.completed} class:draggable={draggableRow} class:editing class="todo-row">
   {#if draggableRow}
-    <span class="drag-handle" aria-hidden="true">
+    <span class="drag-handle" aria-hidden="true" title="Drag to reorder task">
       <GripVertical size={17} />
     </span>
   {/if}
@@ -250,6 +250,7 @@
               bind:value={durationDraft}
               inputmode="numeric"
               min="0"
+              title="Tracked duration in minutes"
               type="number"
               on:change={saveDuration}
             />
@@ -265,7 +266,7 @@
       <button
         class="icon-button"
         aria-label="Move task to plan"
-        title="Move to plan"
+        title="Move task to plan"
         type="button"
         on:click={() => dispatch('moveToPlan', { id: todo.id })}
       >
@@ -274,7 +275,7 @@
       <button
         class="icon-button"
         aria-label="Save task"
-        title="Save"
+        title="Save task"
         type="button"
         on:click={saveEdits}
       >
@@ -283,7 +284,7 @@
       <button
         class="icon-button"
         aria-label="Cancel editing"
-        title="Cancel"
+        title="Cancel editing"
         type="button"
         on:click={() => (editing = false)}
       >
@@ -308,7 +309,7 @@
       <button
         class="icon-button"
         aria-label="Edit task"
-        title="Edit"
+        title="Edit task"
         type="button"
         on:click={() => (editing = true)}
       >
@@ -317,7 +318,7 @@
       <button
         class="icon-button danger"
         aria-label="Delete task"
-        title="Delete"
+        title="Delete task"
         type="button"
         on:click={() => dispatch('deleteTodo', { id: todo.id })}
       >
@@ -333,7 +334,12 @@
   {#if editing && todo.tags.length}
     <div class:editable-tags={editing} class="tag-list todo-row-wide" aria-label="Tags">
       {#each todo.tags as tag}
-        <button class="tag-chip" type="button" on:click={() => removeTag(tag)}>
+        <button
+          class="tag-chip"
+          title={`Remove tag ${tag}`}
+          type="button"
+          on:click={() => removeTag(tag)}
+        >
           {tag}
           <X size={12} aria-hidden="true" />
         </button>
@@ -350,6 +356,7 @@
       <button
         class="secondary-button compact-save"
         disabled={!notesDirty}
+        title={notesDirty ? 'Save notes' : 'No notes changes to save'}
         type="button"
         on:click={saveNotes}
       >

@@ -71,6 +71,7 @@
     <button
       aria-pressed={mode === 'work'}
       class:active={mode === 'work'}
+      title="Set a 25-minute work timer"
       type="button"
       on:click={() => setMode('work')}
     >
@@ -79,6 +80,7 @@
     <button
       aria-pressed={mode === 'break'}
       class:active={mode === 'break'}
+      title="Set a 5-minute break timer"
       type="button"
       on:click={() => setMode('break')}
     >

@@ -117,7 +117,7 @@
     <form class="settings-form" on:submit|preventDefault={save}>
       <label class="field">
         <span>Storage</span>
-        <select bind:value={draft.mode}>
+        <select bind:value={draft.mode} title="Choose where Dogpile saves tasks">
           <option value="local">Local only</option>
           <option value="github">GitHub repo</option>
         </select>
@@ -194,6 +194,11 @@
           <button
             class="secondary-button"
             disabled={!canCompactGitHub}
+            title={
+              canCompactGitHub
+                ? 'Compact GitHub sync history'
+                : 'Save GitHub settings before compacting'
+            }
             type="button"
             on:click={compactGitHubHistory}
           >
@@ -208,7 +213,12 @@
       {/if}
 
       <div class="modal-actions">
-        <button class="secondary-button" type="button" on:click={() => dispatch('close')}>
+        <button
+          class="secondary-button"
+          title="Discard settings changes"
+          type="button"
+          on:click={() => dispatch('close')}
+        >
           <X size={16} aria-hidden="true" />
           Cancel
         </button>
@@ -216,18 +226,24 @@
           <button
             class="secondary-button"
             disabled={testing}
+            title={testing ? 'Testing GitHub connection' : 'Test GitHub connection'}
             type="button"
             on:click={testConnection}
           >
             <Check size={16} aria-hidden="true" />
             {testing ? 'Testing' : 'Test'}
           </button>
-          <button class="secondary-button" type="button" on:click={() => dispatch('syncNow')}>
+          <button
+            class="secondary-button"
+            title="Sync tasks with GitHub now"
+            type="button"
+            on:click={() => dispatch('syncNow')}
+          >
             <RefreshCw size={16} aria-hidden="true" />
             Sync now
           </button>
         {/if}
-        <button class="primary-button" type="submit">
+        <button class="primary-button" title="Save settings" type="submit">
           <Save size={16} aria-hidden="true" />
           Save
         </button>

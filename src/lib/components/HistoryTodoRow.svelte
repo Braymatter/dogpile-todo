@@ -178,6 +178,7 @@
             bind:value={durationDraft}
             inputmode="numeric"
             min="0"
+            title="Tracked duration in minutes"
             type="number"
             on:keydown={handleSaveKeydown}
           />
@@ -222,20 +223,28 @@
 
   <div class="history-todo-actions">
     {#if editing}
-      <button class="icon-button" aria-label="Save history task" title="Save" type="button" on:click={saveEdits}>
+      <button
+        class="icon-button"
+        aria-label="Save history task"
+        title="Save history task"
+        type="button"
+        on:click={saveEdits}
+      >
         <Save size={15} aria-hidden="true" />
       </button>
       <button
         class="icon-button"
         aria-label="Cancel editing history task"
-        title="Cancel"
+        title="Cancel editing"
         type="button"
         on:click={() => (editing = false)}
       >
         <X size={15} aria-hidden="true" />
       </button>
     {:else}
-      <span class="history-duration">{formatDuration(todo.durationMinutes)}</span>
+      <span class="history-duration" title="Tracked duration">
+        {formatDuration(todo.durationMinutes)}
+      </span>
       <button
         class="icon-button"
         aria-expanded={hasNotes ? notesExpanded : undefined}
@@ -254,7 +263,7 @@
       <button
         class="icon-button"
         aria-label="Edit history task"
-        title="Edit"
+        title="Edit history task"
         type="button"
         on:click={() => (editing = true)}
       >
@@ -279,7 +288,12 @@
   {#if editing && todo.tags.length}
     <div class="day-tag-list editable-tags" aria-label="Tags">
       {#each todo.tags as tag}
-        <button class="tag-chip" type="button" on:click={() => removeTag(tag)}>
+        <button
+          class="tag-chip"
+          title={`Remove tag ${tag}`}
+          type="button"
+          on:click={() => removeTag(tag)}
+        >
           {tag}
           <X size={12} aria-hidden="true" />
         </button>
@@ -296,6 +310,7 @@
       <button
         class="secondary-button compact-save"
         disabled={!notesDirty}
+        title={notesDirty ? 'Save notes' : 'No notes changes to save'}
         type="button"
         on:click={saveNotes}
       >
