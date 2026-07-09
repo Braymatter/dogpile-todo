@@ -1010,13 +1010,17 @@ button {
 .notes-line-editor {
   display: grid;
   align-content: start;
-  gap: 6px;
+  gap: 1px;
   min-height: 0;
   flex: 1;
-  padding: 2px;
+  padding: 0;
 }
 
 .note-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px;
+  align-items: start;
   min-width: 0;
   border: 1px solid transparent;
   border-radius: 8px;
@@ -1028,21 +1032,19 @@ button {
 }
 
 .note-line.editing {
-  border-color: var(--line-strong);
-  background:
-    linear-gradient(90deg, rgba(88, 224, 197, 0.055), transparent 58%),
-    var(--surface-alt);
-  box-shadow: inset 0 0 0 1px rgba(151, 255, 240, 0.08);
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 
 .note-line textarea {
-  min-height: 40px;
+  min-height: 30px;
   overflow: hidden;
-  padding: 8px 10px;
+  padding: 3px 8px;
   border-color: transparent;
   background: transparent;
   color: var(--text);
-  line-height: 1.55;
+  line-height: 1.45;
   resize: none;
 }
 
@@ -1053,11 +1055,11 @@ button {
 
 .note-line-preview {
   min-width: 0;
-  min-height: 40px;
-  padding: 8px 10px;
+  min-height: 30px;
+  padding: 3px 8px;
   border-radius: 8px;
   color: var(--text);
-  line-height: 1.55;
+  line-height: 1.45;
   overflow-wrap: anywhere;
   outline: none;
   cursor: text;
@@ -1074,6 +1076,33 @@ button {
 
 .note-line-preview.empty {
   color: var(--muted);
+}
+
+.note-line-actions {
+  display: flex;
+  gap: 2px;
+  padding-top: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease;
+}
+
+.note-line:hover .note-line-actions,
+.note-line:focus-within .note-line-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.note-line-action {
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.note-line-action:hover,
+.note-line-action:focus-visible {
+  color: var(--accent-strong);
 }
 
 .note-line-preview > :first-child {
@@ -1154,13 +1183,6 @@ button {
   padding: 0;
   border: 0;
   background: transparent;
-}
-
-.note-line-add {
-  width: 34px;
-  height: 34px;
-  justify-self: start;
-  color: var(--accent-strong);
 }
 
 .quick-add {
@@ -2225,7 +2247,7 @@ button {
 
   .note-line textarea,
   .note-line-preview {
-    min-height: 42px;
+    min-height: 32px;
   }
 
   .todo-row {

@@ -403,13 +403,41 @@
     }
   }
 
-  async function addNoteLine() {
+  function promoteNoteLine(index: number, target: 'todo' | 'plan') {
     const lines = getNoteLines(notesMarkdown);
-    const nextIndex = lines.length;
-    lines.push('');
-    setNoteLines(lines);
+    const parsed = parseTagInput(cleanTaskTitleFromNoteLine(lines[index] ?? ''));
+
+    if (!parsed.text) return;
+
+    const task = {
+      title: parsed.text,
+      notes: '',
+      tags: mergeQuickAddTags(parsed.tags, activeFilterTags)
+    };
+
+    if (target === 'todo') {
+      dispatch('addTodo', task);
+    } else {
+      dispatch('addPlannedTask', task);
+    }
+
+    const nextLines = lines.slice();
+    nextLines.splice(index, 1);
+
+    if (!nextLines.length) {
+      nextLines.push('');
+    }
+
+    setNoteLines(nextLines);
     shouldAutoFocusLastNoteLine = false;
-    await focusNoteLine(nextIndex, 0);
+    void focusNoteLine(Math.min(index, nextLines.length - 1), 0);
+  }
+
+  function cleanTaskTitleFromNoteLine(line: string) {
+    return line
+      .trim()
+      .replace(/^([-*]\s+\[[ xX]\]\s+|[-*]\s+|\d+\.\s+|#{1,6}\s+|>\s?)/, '')
+      .trim();
   }
 
   function requestScratchpadAutofocus() {
@@ -738,7 +766,6 @@
     <div class="daily-tab-panel" role="tabpanel" aria-label="Notes">
       <div class="card-heading">
         <div>
-          <p class="eyebrow">Notes</p>
           <h2>Scratchpad</h2>
         </div>
         <div class="daily-heading-actions">
@@ -784,18 +811,33 @@
                   {/if}
                 </div>
               {/if}
+
+              {#if line.trim()}
+                <div class="note-line-actions" aria-label={`Promote notes line ${index + 1}`}>
+                  <button
+                    class="note-line-action icon-button"
+                    aria-label={`Promote notes line ${index + 1} to Todo`}
+                    title="Send to Todo"
+                    type="button"
+                    on:mousedown|preventDefault
+                    on:click|stopPropagation={() => promoteNoteLine(index, 'todo')}
+                  >
+                    <ListTodo size={14} aria-hidden="true" />
+                  </button>
+                  <button
+                    class="note-line-action icon-button"
+                    aria-label={`Promote notes line ${index + 1} to Plan`}
+                    title="Send to Plan"
+                    type="button"
+                    on:mousedown|preventDefault
+                    on:click|stopPropagation={() => promoteNoteLine(index, 'plan')}
+                  >
+                    <ClipboardList size={14} aria-hidden="true" />
+                  </button>
+                </div>
+              {/if}
             </div>
           {/each}
-
-          <button
-            class="note-line-add icon-button"
-            aria-label="Add notes line"
-            title="Add line"
-            type="button"
-            on:click={() => void addNoteLine()}
-          >
-            <Plus size={16} aria-hidden="true" />
-          </button>
         </div>
       </section>
     </div>
