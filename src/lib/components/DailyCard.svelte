@@ -329,6 +329,32 @@
     resizeNoteLineTextarea(event.currentTarget as HTMLTextAreaElement);
   }
 
+  function handleNoteLinePaste(event: ClipboardEvent, index: number) {
+    const pastedText = event.clipboardData?.getData('text/plain') ?? '';
+    if (!/[\r\n]/.test(pastedText)) return;
+
+    event.preventDefault();
+
+    const textarea = event.currentTarget as HTMLTextAreaElement;
+    const lines = getNoteLines(notesMarkdown);
+    const value = lines[index] ?? '';
+    const selectionStart = textarea.selectionStart ?? value.length;
+    const selectionEnd = textarea.selectionEnd ?? selectionStart;
+    const before = value.slice(0, selectionStart);
+    const after = value.slice(selectionEnd);
+    const pastedLines = pastedText.replace(/\r\n?/g, '\n').split('\n');
+    const replacementLines = pastedLines.slice();
+    const lastReplacementIndex = replacementLines.length - 1;
+
+    replacementLines[0] = `${before}${replacementLines[0]}`;
+    replacementLines[lastReplacementIndex] = `${replacementLines[lastReplacementIndex]}${after}`;
+    lines.splice(index, 1, ...replacementLines);
+
+    shouldAutoFocusLastNoteLine = false;
+    setNoteLines(lines);
+    void focusNoteLine(index + lastReplacementIndex, pastedLines[lastReplacementIndex].length);
+  }
+
   function handleNoteLineFocus(event: FocusEvent, index: number) {
     activeNoteLineIndex = index;
     resizeNoteLineTextarea(event.currentTarget as HTMLTextAreaElement);
@@ -792,6 +818,7 @@
                   on:focus={(event) => handleNoteLineFocus(event, index)}
                   on:input={(event) => handleNoteLineInput(event, index)}
                   on:keydown={(event) => handleNoteLineKeydown(event, index)}
+                  on:paste={(event) => handleNoteLinePaste(event, index)}
                 ></textarea>
               {:else}
                 <div
