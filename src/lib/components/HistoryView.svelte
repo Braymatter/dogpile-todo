@@ -26,9 +26,17 @@
   let canScrollHistoryRight = false;
   let leftEdgeHeight = 100;
   let rightEdgeHeight = 100;
+  let expandedDayKey: string | null = null;
+  let expandedDialog: HTMLElement;
+  let returnFocusElement: HTMLElement | null = null;
+  let previousBodyOverflow = '';
 
   $: days = buildDays(range, todos);
   $: columns = buildColumns(days);
+  $: expandedDay = days.find((day) => day.key === expandedDayKey) ?? null;
+  $: if (expandedDayKey && !days.some((day) => day.key === expandedDayKey)) {
+    closeExpandedDay();
+  }
   $: scrollKey = `${range}:${days[0]?.key ?? ''}:${days[days.length - 1]?.key ?? ''}`;
   $: if (browser && railElement && scrollKey) {
     void scrollToNewest();
@@ -43,7 +51,77 @@
     if (!browser) return;
 
     window.removeEventListener('resize', updateScrollEdges);
+    restoreBodyScroll();
   });
+
+  async function openExpandedDay(key: string) {
+    if (!browser) return;
+
+    returnFocusElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    expandedDayKey = key;
+
+    await tick();
+    expandedDialog?.querySelector<HTMLElement>('button')?.focus();
+  }
+
+  async function closeExpandedDay() {
+    if (!expandedDayKey) return;
+
+    expandedDayKey = null;
+    restoreBodyScroll();
+    await tick();
+    returnFocusElement?.focus();
+    returnFocusElement = null;
+  }
+
+  function restoreBodyScroll() {
+    if (!browser) return;
+
+    document.body.style.overflow = previousBodyOverflow;
+  }
+
+  function handleBackdropClick(event: MouseEvent) {
+    if (event.target === event.currentTarget) {
+      void closeExpandedDay();
+    }
+  }
+
+  function handleWindowKeydown(event: KeyboardEvent) {
+    if (!expandedDay) return;
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      void closeExpandedDay();
+      return;
+    }
+
+    if (event.key !== 'Tab' || !expandedDialog) return;
+
+    const focusableElements = Array.from(
+      expandedDialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    );
+
+    if (!focusableElements.length) {
+      event.preventDefault();
+      expandedDialog.focus();
+      return;
+    }
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    if (event.shiftKey && (document.activeElement === firstElement || !expandedDialog.contains(document.activeElement))) {
+      event.preventDefault();
+      lastElement.focus();
+    } else if (!event.shiftKey && document.activeElement === lastElement) {
+      event.preventDefault();
+      firstElement.focus();
+    }
+  }
 
   function buildDays(dayCount: HistoryRange, completedTodos: TodoItem[]): HistoryDay[] {
     const today = startOfDay(new Date());
@@ -155,6 +233,8 @@
   }
 </script>
 
+<svelte:window on:keydown={handleWindowKeydown} />
+
 <div class="history-header">
   <div>
     <p class="eyebrow">History</p>
@@ -181,6 +261,7 @@
           <DayCard
             activeFilterTags={activeFilterTags}
             {day}
+            on:expand={(event) => openExpandedDay(event.detail.key)}
             on:markIncomplete={(event) => dispatch('markIncomplete', event.detail)}
             on:toggleTagFilter={(event) => dispatch('toggleTagFilter', event.detail)}
             on:updateTodo={(event) => dispatch('updateTodo', event.detail)}
@@ -196,3 +277,31 @@
     aria-hidden="true"
   ></div>
 </div>
+
+{#if expandedDay}
+  <div
+    class="modal-backdrop day-detail-backdrop"
+    role="presentation"
+    on:click={handleBackdropClick}
+  >
+    <div
+      bind:this={expandedDialog}
+      aria-labelledby={`expanded-day-${expandedDay.key}`}
+      aria-modal="true"
+      class="expanded-day-modal"
+      role="dialog"
+      tabindex="-1"
+    >
+      <DayCard
+        activeFilterTags={activeFilterTags}
+        day={expandedDay}
+        expanded
+        titleId={`expanded-day-${expandedDay.key}`}
+        on:close={closeExpandedDay}
+        on:markIncomplete={(event) => dispatch('markIncomplete', event.detail)}
+        on:toggleTagFilter={(event) => dispatch('toggleTagFilter', event.detail)}
+        on:updateTodo={(event) => dispatch('updateTodo', event.detail)}
+      />
+    </div>
+  </div>
+{/if}

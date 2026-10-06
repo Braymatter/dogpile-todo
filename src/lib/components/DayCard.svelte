@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Maximize2, X } from '@lucide/svelte';
   import { createEventDispatcher } from 'svelte';
   import type { TodoItem } from '$lib/types';
   import HistoryTodoRow from './HistoryTodoRow.svelte';
@@ -10,8 +11,12 @@
     totalMinutes: number;
   };
   export let activeFilterTags: string[] = [];
+  export let expanded = false;
+  export let titleId: string | undefined = undefined;
 
   const dispatch = createEventDispatcher<{
+    close: { key: string };
+    expand: { key: string };
     markIncomplete: { id: string };
     toggleTagFilter: { tag: string };
     updateTodo: { id: string; updates: Partial<TodoItem> };
@@ -35,10 +40,25 @@
   }
 </script>
 
-<article class="day-card card">
+<article class:expanded-day-card={expanded} class="day-card card">
   <header>
-    <h3>{title}</h3>
-    <span>{day.todos.length}</span>
+    <h3 id={titleId}>{title}</h3>
+    <div class="day-card-heading-actions">
+      <span class="day-count">{day.todos.length}</span>
+      <button
+        class="icon-button day-expand-button"
+        aria-label={expanded ? `Close ${title}` : `Expand ${title}`}
+        title={expanded ? 'Close expanded day' : 'Expand day'}
+        type="button"
+        on:click={() => dispatch(expanded ? 'close' : 'expand', { key: day.key })}
+      >
+        {#if expanded}
+          <X size={16} aria-hidden="true" />
+        {:else}
+          <Maximize2 size={15} aria-hidden="true" />
+        {/if}
+      </button>
+    </div>
   </header>
 
   {#if day.todos.length}
